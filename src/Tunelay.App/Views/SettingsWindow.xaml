@@ -273,9 +273,8 @@
         <Border Grid.RowSpan="2" Background="#FF101010" Padding="12,18">
             <DockPanel>
                 <StackPanel DockPanel.Dock="Top" Orientation="Horizontal" Margin="8,0,0,20">
-                    <Border Width="30" Height="30" CornerRadius="8" Background="{StaticResource AccentBrush}">
-                        <TextBlock Text="♪" FontSize="17" Foreground="#FF0B0B0B" HorizontalAlignment="Center" VerticalAlignment="Center" />
-                    </Border>
+                    <Image Width="32" Height="32" Source="pack://application:,,,/Tunelay;component/Assets/Tunelay.png"
+                           RenderOptions.BitmapScalingMode="HighQuality" />
                     <StackPanel Margin="10,0,0,0" VerticalAlignment="Center">
                         <TextBlock Text="Tunelay" FontWeight="SemiBold" />
                         <TextBlock Text="Ayarlar" FontSize="11" Foreground="{StaticResource SubtleTextBrush}" />
@@ -320,7 +319,7 @@
                 <StackPanel x:Name="SpotifySection">
                     <TextBlock Style="{StaticResource Title}" Text="Spotify" />
                     <TextBlock Style="{StaticResource Hint}" Margin="0,0,0,16"
-                               Text="Oynat, atla, karışık ve tekrar hesapsız çalışır. Ruh hali listeleri, ♡ ve ＋ için hesap bağlayın." />
+                               Text="Oynat, atla, karışık ve tekrar hesapsız çalışır. Ruh hali listeleri, beğenme ve listeye ekleme için hesap bağlayın." />
 
                     <Border Style="{StaticResource Panel}">
                         <StackPanel>
@@ -344,7 +343,7 @@
                         </StackPanel>
                     </Border>
                     <TextBlock Style="{StaticResource Hint}"
-                               Text="Hesapla kontrol Spotify Premium gerektirir. ♡ (beğenme) çalışmıyorsa İzinleri yenile'ye basın." />
+                               Text="Hesapla kontrol Spotify Premium gerektirir. Beğenme (⊕) çalışmıyorsa İzinleri yenile'ye basın." />
                 </StackPanel>
 
                 <!-- Moods -->
@@ -411,7 +410,7 @@
                             <CheckBox x:Name="ShowMoodDockBox" Content="Ruh hali düğmelerini masaüstünde göster" />
                             <CheckBox x:Name="AnimationsBox" Content="Animasyonlar" Margin="0,12,0,0" Click="OnPreviewChanged" />
                             <TextBlock Style="{StaticResource Hint}" Margin="50,4,0,0"
-                                       Text="Kısa geçişler (en fazla 250 ms, hiçbiri sürekli dönmez). Windows animasyonları kapalıyken de kapanır." />
+                                       Text="Kısa geçişler (hiçbiri sürekli dönmez). Windows animasyonları kapalıyken de kapanır." />
                             <Grid Margin="50,12,0,0" IsEnabled="{Binding IsChecked, ElementName=AnimationsBox}">
                                 <Grid.ColumnDefinitions>
                                     <ColumnDefinition Width="150" />

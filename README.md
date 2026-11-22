@@ -1,86 +1,155 @@
+<img src="src/Tunelay.App/Assets/Tunelay.png" width="96" height="96" alt="Tunelay logosu">
+
 # Tunelay
 
-Masaüstü ve oyun içi Spotify atmosfer asistanı — **Faz 1 (çekirdek katman)**.
+Windows için Spotify masaüstü ve oyun içi kontrol kartı. Spotify masaüstü uygulamasını yönetir, müziği kendisi çalmaz.
 
-Masaüstüne sabitlenmiş mod düğmeleri, köşede sade bir şarkı kartı (önceki / oynat-duraklat / sonraki / beğen / mod listesine ekle) ve tam ekran oyunlarda şeffaf, tıklamaları geçiren bir görünüm.
+Tunelay bağımsız bir projedir. Spotify tarafından yapılmamış, onaylanmamış veya desteklenmemiştir. Şarkı bilgisi ve kapaklar Spotify tarafından sağlanır. Spotify adı ve logosu Spotify AB'nin markalarıdır.
 
-## Özellikler (Faz 1)
+## Hesapsız ve hesapla
 
-- **Masaüstü ruh hali paneli** – Ruh hali düğmeleri masaüstünde, tüm pencerelerin arkasında durur. Ayarlardan kapatılabilir.
-- **Kendi ruh halleriniz** – Ayarlar → Ruh halleri: ekleyin, yeniden adlandırın, renk ve çalma listesi seçin, silin. Sıra panelde ve Ctrl+Alt+M geçişinde kullanılır. Düğmeye basınca liste karışık çalar.
-- **Şarkı kartı** – Kapak, şarkı, sanatçı, aktif ruh hali; 🔀 karışık çalma, ⏮ ⏯ ⏭, 🔁 tekrarlama (kapalı / liste / şarkı), ♡ (Beğenilen Şarkılar'a ekle/çıkar), ＋ (aktif ruh halinin listesine ekle), ses kaydırıcısı. Odağı asla çalmaz (`WS_EX_NOACTIVATE`).
-- **Etkileşim modu** – Kart masaüstünde de oyunda da normalde şeffaf, sade ve tıklama geçirgendir. **Etkileşim tuşuna** basınca düğmeler açılır (oyunda ruh hali düğmeleri de karta gelir); Esc, tuşa tekrar basma, fare karttan çıkınca veya 4 sn hareketsizlikte kapanır. İki opaklık (boşta / etkileşimde) ayarlardan %0–100 seçilir.
-- **Taşıma modu** – **Ctrl+Alt+D** veya tepsi menüsü → *Taşıma modu*: kart ve panel kesikli çerçeveyle belirir, istediğiniz yere (başka monitör dahil) sürükleyin; Esc veya tekrar Ctrl+Alt+D ile bitirin. Konumlar kaydedilir; Ayarlar → *Köşeye geri al* ile sıfırlanır.
-- **Animasyonlar** – Şarkı değişimi, kartın açılması, ♡ "pop", bildirimler ve düğmeler için kısa (≤250 ms) geçişler. Yalnızca opaklık/kaydırma kullanılır, hiçbiri sürekli dönmez. Oyunda seviye Ayarlar → Görünüm → *Oyunda animasyonlar* ile seçilir: Kapalı · Hafif (30 fps, varsayılan) · Tam (60 fps). Windows animasyonları kapalıyken veya *Animasyonlar* anahtarı kapalıyken devre dışıdır.
-- **Düğme içi animasyonlar** – Düğme yerinde durur, içindeki simge hareket eder: 🔀 oklar DNA sarmalı gibi kıvrılarak ilerler, 🔁 tam tur döner, ⏮/⏭ simge kayıp düğmeden çıkar ve karşı taraftan geri girer, ⏯ eski simge dönerek küçülüp yenisine dönüşür, ♡ beğenince büyür ve çevresine yeşil parçacıklar saçılır, ＋ listeye düşer gibi aşağı kayıp yukarıdan geri iner, ses değişince hoparlörden dalgalar yayılır (kısılınca içe), ruh hali düğmelerinde renk basılan noktadan yayılır. Kısayollarda ve Spotify uygulamasından yapılan değişikliklerde de oynar.
-- **Şarkı değişimi vurgusu** – Yeni şarkı başlayınca kart ~3 sn etkileşim opaklığında belirginleşir, kapak/isim kayarak gelir, sonra soluklaşır; tıklamalar oyuna geçmeye devam eder. Oyunda da şarkı bitişi ~1 sn içinde fark edilir (yoklama şarkı sonuna göre zamanlanır).
-- **Ayarlar penceresi** – Koyu tema, sekmeler (Spotify · Ruh halleri · Görünüm · Kısayollar), opaklık ve köşe için kartta canlı önizleme, kısayol çakışmalarında satır içi uyarı, ruh hallerini oklarla sıralama.
-- **Tam ekran oyunlar** – Ön plandaki pencere monitörü kaplıyorsa kart her 2 sn'de en üste alınır ve Spotify yoklaması 3 sn → 15 sn'ye düşer.
-- **Genel kısayollar** (ayarlardan değiştirilebilir; tek başına F1–F24, Pause, Scroll Lock veya Insert de atanabilir):
+| | Hesapsız | Hesapla (Premium) |
+|---|---|---|
+| Şarkı, kapak, oynat, atla, karışık, tekrar | ✓ | ✓ |
+| Ses | Spotify'ın sesi Windows mikserinde görünürken | ✓ |
+| Şarkıya tıklayınca | Spotify'ı açar | şarkıyı Spotify'da açar |
+| Ruh hali listeleri, beğenme, listeye ekleme | – | ✓ |
 
-  | İşlev | Varsayılan |
-  |---|---|
-  | Etkileşim tuşu (kartı aç) | Ctrl+Alt+Space |
-  | Taşıma modu | Ctrl+Alt+D |
-  | Beğen / vazgeç | Ctrl+Alt+L |
-  | Oynat / duraklat | Ctrl+Alt+P |
-  | Karışık çalma aç / kapat | Ctrl+Alt+K |
-  | Tekrarlama (kapalı → liste → şarkı) | Ctrl+Alt+R |
-  | Sonraki / önceki | Ctrl+Alt+→ / ← |
-  | Ses ±10 | Ctrl+Alt+↑ / ↓ |
-  | Çalan şarkıyı aktif mod listesine kaydet | Ctrl+Alt+S |
-  | Sonraki moda geç | Ctrl+Alt+M |
-  | Oyunu kenarlıksız tam ekran yap / geri al | Ctrl+Alt+B |
+## Özellikler
 
-- **Beğenme izni** – ♡ için `user-library-read` / `user-library-modify` izinleri gerekir. Daha önce bağlandıysanız bir kez Ayarlar → Bağlantıyı kes → Spotify'a bağlan yapın.
-- **Güvenlik** – Token'lar Windows DPAPI ile şifrelenir (`%AppData%\Tunelay\tokens.bin`). Oyun süreçlerine DLL enjeksiyonu veya DirectX/Vulkan kancası yoktur; yalnızca `SetWinEventHook` (süreç dışı) ve `RegisterHotKey` kullanılır.
+- **Şarkı kartı:** odağı almaz, normalde şeffaftır ve tıklamaları alttaki pencereye geçirir.
+- **Etkileşim tuşu:** düğmeleri açar. Esc, aynı tuş, farenin karttan çıkması veya 4 sn hareketsizlik kapatır.
+- **Spotify bağlantısı:** kart açıkken kapak, şarkı adı, sanatçı ve logo Spotify'ı açar. Tam ekran oyunda yanlışlıkla çıkmamak için ikinci tık ister. Dar kartta yer kazanmak için boştayken yalnızca Spotify simgesi, etkileşimde tam logo görünür.
+- **Beğenme ve listeye ekleme:** ⊕ Beğenilen Şarkılar'a ekler (✓ olur, tekrar basınca çıkarır). Liste simgesi şarkıyı seçili ruh halinin listesine ekler, liste size ait veya ortak değilse hata verir.
+- **Ruh halleri:** her biri sizin seçtiğiniz bir çalma listesidir, karışık çalar. Adı, rengi ve sırası değiştirilebilir.
+- **Spotify'ı arkada açma:** yalnızca Oynat'a veya bir ruh haline bastığınızda.
+- **Windows ile başlatma:** varsayılan kapalı. Pencere açmadan, odak almadan başlar.
+- **Taşıma modu:** kart ve ruh hali paneli herhangi bir monitöre sürüklenir.
+- **Görünüm:** iki ayrı opaklık, köşe seçimi, kapatılabilir animasyonlar, oyunda ayrı animasyon seviyesi.
 
-> **Not:** Kart, *kenarlıksız / pencereli tam ekran* oyunların üzerinde görünür. *Özel (exclusive) tam ekran* (ör. Minecraft'ta F11) üzerine hiçbir masaüstü penceresi çizilemez. Çözüm: oyunu pencere modunda açın, oyun penceresine tıklayın ve **Ctrl+Alt+B**'ye basın; pencere çerçevesiz olarak tüm ekranı kaplar ve kart üstünde görünür. Tekrar basınca eski hâline döner; Tunelay kapanırken de geri alınır. Oyuna hiçbir şey enjekte edilmez, yalnızca pencere stili ve boyutu değişir.
+### Kısayollar
+
+Hepsi Ayarlar'dan değiştirilebilir.
+
+| İşlev | Varsayılan |
+|---|---|
+| Etkileşim tuşu | Ctrl+Alt+Space |
+| Taşıma modu | Ctrl+Alt+D |
+| Oynat / duraklat | Ctrl+Alt+P |
+| Sonraki / önceki | Ctrl+Alt+→ / ← |
+| Ses ±10 | Ctrl+Alt+↑ / ↓ |
+| Karışık çalma | Ctrl+Alt+K |
+| Tekrarlama | Ctrl+Alt+R |
+| Beğen / vazgeç | Ctrl+Alt+L |
+| Şarkıyı ruh hali listesine ekle | Ctrl+Alt+S |
+| Sonraki ruh hali | Ctrl+Alt+M |
+| Kenarlıksız tam ekran | Ctrl+Alt+B |
 
 ## Kurulum
 
-### 1. Spotify geliştirici uygulaması
+Gerekenler: Windows 10 2004 (19041) veya üzeri 64 bit ve Spotify masaüstü uygulaması. Derlemek için .NET 10 SDK.
 
-1. <https://developer.spotify.com/dashboard> → **Create app**.
-2. **Redirect URI** olarak tam olarak şunu ekleyin: `http://127.0.0.1:5543/callback`
-3. **APIs used** kısmında *Web API*'yi seçin, kaydedin.
-4. **Client ID**'yi kopyalayın (Client Secret gerekmez — PKCE kullanılır).
-
-Oynatma kontrolü (oynat, atla, ses, liste başlatma) **Spotify Premium** gerektirir.
-
-### 2. Derleme ve çalıştırma
-
-Gereken: .NET 10 SDK, Windows 10/11.
+Tek dosyalık exe üretmek için (çıktı `publish\Tunelay.exe`, .NET kurulumu istemez, önce açık Tunelay'den çıkın):
 
 ```powershell
-dotnet build
+dotnet publish src/Tunelay.App -p:PublishProfile=Tunelay
 ```
+
+Geliştirirken:
 
 ```powershell
 dotnet run --project src/Tunelay.App
 ```
 
-İlk açılışta ayarlar penceresi açılır: Client ID'yi yapıştırın → **Spotify'a bağlan** → tarayıcıda onaylayın → her moda bir çalma listesi seçin → **Kaydet**. Uygulama sistem tepsisinde (♪) çalışır; sağ tık menüsünden ayarlar, gizle/göster ve çıkış.
-
-### Testler
-
 ```powershell
 dotnet test
 ```
 
+### Hesap bağlama
+
+İlk açılıştaki **Hesabımı bağla** veya Ayarlar → Spotify → **Hesap bağla…** üç adımlı sihirbazı açar:
+
+1. [Spotify panelinde](https://developer.spotify.com/dashboard) Web API kullanan bir uygulama oluşturun.
+2. Redirect URI olarak `http://127.0.0.1:5543/callback` ekleyin.
+3. Client ID'yi sihirbaza yapıştırın. Client secret gerekmez.
+
+Geliştirme modundaki bir Spotify uygulamasını en fazla 5 kişi kullanabilir. Her biri panelde User Management'a eklenir, uygulama sahibinin Premium'u olmalıdır.
+
+### Bağlantıyı kesme
+
+Ayarlar → Spotify → **Bağlantıyı kes…**. Spotify tarafındaki izni kaldırmak için ayrıca [spotify.com/account/apps](https://www.spotify.com/account/apps/) sayfasını kullanın.
+
+## Oyunlar ve anti-cheat
+
+Tunelay oyunlara DLL enjekte etmez, DirectX veya Vulkan'a kanca atmaz ve oyun belleğini okumaz. Kullandıkları: normal bir üstte duran pencere, `RegisterHotKey` ve süreç dışı `SetWinEventHook`.
+
+**Bu, anti-cheat ile uyumlu olduğu anlamına gelmez. Hiçbir anti-cheat ile test edilmedi ve güvence verilmez.**
+
+**Ctrl+Alt+B** diğerlerinden farklıdır: oyunun, yani başka bir sürecin penceresinin stilini ve boyutunu değiştirir. Rekabetçi veya anti-cheat kullanan oyunlarda kullanmayın.
+
+Kart, kenarlıksız ve pencereli tam ekran oyunların üzerinde görünür. Özel (exclusive) tam ekranın üzerine masaüstü penceresi çizilemez.
+
+## Gizlilik
+
+Tunelay'in sunucusu, telemetrisi, reklamı ve çerezi yoktur. Geliştiriciye veri gönderilmez.
+
+| Veri | Neden | Nerede | Ne zaman silinir |
+|---|---|---|---|
+| Erişim ve yenileme anahtarları | Oturum | `%AppData%\Tunelay\tokens.bin` (Windows DPAPI ile şifreli) | Bağlantıyı kesince |
+| Seçilen listelerin kimliği ve adı | Ruh halleri | `%AppData%\Tunelay\settings.json` | Bağlantıyı kesince |
+| Client ID, ruh halleri, kısayollar, görünüm | Ayarlar | `%AppData%\Tunelay\settings.json` | Klasörü siz silince |
+| Kapak görseli (hesapsız mod) | Kartta gösterim | `%TEMP%\Tunelay-art` | Yeni kapakta veya bağlantıyı kesince |
+| Başlangıç kaydı (açtıysanız) | Windows ile başlatma | `HKCU\Software\Microsoft\Windows\CurrentVersion\Run` | Anahtarı kapatınca |
+
+- **Spotify'dan okunanlar:** çalma durumu ve cihazlar, çalma listeleriniz, çalan şarkının beğenilip beğenilmediği, listeye eklerken kullanıcı kimliğiniz (saklanmaz).
+- **Spotify'da değiştirilenler:** yalnızca sizin komutunuzla oynatma, Beğenilen Şarkılar ve seçtiğiniz liste.
+- **Bağlanılan adresler:** `accounts.spotify.com`, `api.spotify.com` ve Spotify'ın kapak görseli sunucuları. Görseller Windows'un geçici internet önbelleğinde kalabilir. Giriş kendi tarayıcınızda yapılır, oradaki çerezler Spotify'ın politikasına tabidir.
+- **Windows'tan okunanlar:** Spotify'ın medya oturumu ve ses düzeyi, Spotify'ın açık olup olmadığı, öndeki pencerenin boyutu ve sınıfı (tam ekran algısı için).
+
+Uygulamanın eski adı Spotiwidget idi. İlk açılışta `%AppData%\Spotiwidget` içindeki ayarlar ve oturum kopyalanır. Bağlantıyı kesmek oradaki Spotify verisini de siler.
+
+## Dağıtımdan önce çözülmesi gerekenler
+
+Tunelay şu an kişisel kullanım içindir. [Developer Policy](https://developer.spotify.com/policy), [Developer Terms](https://developer.spotify.com/terms) ve [tasarım kuralları](https://developer.spotify.com/documentation/design) 22 Kasım 2026'da gözden geçirildi. Aşağıdakiler hukuki görüş değildir.
+
+- [ ] **Client ID:** herkesin kendi kimliğini alması "uygulama başına tek kimlik" kuralıyla (Policy VII.2) çelişebilir. Tek kimlik ise geliştirme modunda 5 kişiyle sınırlı.
+- [ ] **Gizlilik metni:** kurulumdan veya girişten önce gösterilmeli ve bir iletişim adresi içermeli (Terms V.12).
+- [ ] **Kullanıcı sözleşmesi (EULA):** Terms V.11'deki beş zorunlu madde, Spotify'ın üçüncü taraf lehtar olması dahil.
+- [ ] **Hesapsız mod:** Premium olmayanlara kontrol sunmanın Policy IV.1 ile ilişkisi Spotify'a sorulmalı.
+- [ ] **Temel deneyimi taklit:** Policy III.11 açısından Spotify'dan görüş alınmalı.
+- [ ] **Kapak animasyonu:** şarkı değişiminde kapak kayarak geliyor, tasarım kuralları kapağın canlandırılmamasını istiyor.
+- [ ] **Saydamlık:** kapak, şarkı bilgisi ve logo boştayken yarı saydam. Kurallar özgün görünüm ve okunabilirlik istiyor.
+- [ ] **Boştayken yalnız simge:** kurallar buna "tam logoya yer yoksa" izin veriyor. 300 piksellik kartın böyle sayılacağı bizim yorumumuz, Spotify'a doğrulatılmalı.
+- [ ] **Logo açılma animasyonu:** geçiş sırasında Spotify yazısı kısa süre yarım görünüyor. Animasyon açıkça yasak değil, ama "logo değiştirilmemeli" kuralı açısından gri alan.
+- [ ] **Tunelay logosu:** marka benzerliği araştırması yapılmadı.
+- [ ] **Oynatma kısıtları:** Spotify'ın izin vermediği komutların düğmeleri önceden kapatılmıyor, hata mesajı gösteriliyor.
+- [ ] **Yeşil vurgu:** simge mor, ancak düğme vurguları Spotify yeşili.
+- [ ] **Ticari kullanım:** oynatma kontrol eden uygulamalar satılamaz, reklam veya sponsor alamaz (Policy IV).
+
+## Yol haritası
+
+- Fare jestleri
+- Zen modu ve Pomodoro
+- Oyuna göre kart konumu
+- Ayarların eşitlenmesi (Spotify verisi hariç)
+
+Önce politika incelemesi gerekenler:
+
+- Dinamik duvar kağıdı: kapak bulanıklaştırılamaz, kırpılamaz, üstüne bir şey konamaz.
+- Ses kısma (ducking): başka sesle karıştırma yasağı (III.7).
+- Oyun olayı tetikleyicileri: görsel medyayla eşzamanlama yasağı (III.6).
+- Proaktif öneriler ve benzer şarkı radyosu: içerik analizi, profil çıkarma ve yapay zekâ yasakları (III.13, III.14).
+
+Politika gereği yapılmayacaklar:
+
+- **Sesli komut** (III.3)
+- **Crossfade, şarkı geçişi karıştırma** (III.7)
+
 ## Proje yapısı
 
 ```
-src/Tunelay.Core     Ayarlar (JSON), PKCE yetkilendirme, token yenileme, rate-limit korumalı API istemcisi, oynatma yoklaması, mod servisi
-src/Tunelay.Native   Win32: pencere stilleri, genel kısayollar, ön plan / tam ekran izleyici, DPAPI
-src/Tunelay.App      WPF: şarkı kartı, masaüstü mod paneli, ayarlar penceresi, tepsi simgesi
+src/Tunelay.Core     ayarlar, PKCE, API istemcisi, oynatma, ruh halleri, başlangıç mantığı
+src/Tunelay.Native   Win32, Windows medya oturumu, ses mikseri, DPAPI, kayıt defteri
+src/Tunelay.App      WPF: kart, panel, karşılama, ayarlar, tepsi
 tests/Tunelay.Core.Tests
 ```
-
-Ayarlar: `%AppData%\Tunelay\settings.json`
-
-> Uygulamanın eski adı Spotiwidget idi. İlk açılışta `%AppData%\Spotiwidget` içindeki ayarlar ve oturum `%AppData%\Tunelay` klasörüne kopyalanır; eski klasör silinmez.
-
-## Sonraki fazlar
-
-Vosk sesli komut + uyandırma kelimesi, fare jestleri, dinamik duvar kağıdı, audio ducking, Zen + Pomodoro zinciri, oyuna göre HUD konumlandırma, oyun içi olay tetikleyicileri, bulut senkronizasyonu, proaktif öneriler, benzer şarkı radyosu.

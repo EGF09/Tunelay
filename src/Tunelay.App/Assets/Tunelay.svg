@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="256" height="256" viewBox="0 0 64 64">
+  <title>Tunelay</title>
+  <!-- A T whose stem ends in a note head. Tunelay.ico and Tunelay.png are drawn from these shapes,
+       with the straight edges moved onto whole pixels at small sizes. -->
+  <rect x="2" y="2" width="60" height="60" rx="15" fill="#7C4DFF"/>
+  <rect x="14" y="13" width="36" height="9" rx="4.5" fill="#FFFFFF"/>
+  <rect x="30" y="17.5" width="9" height="27.5" fill="#FFFFFF"/>
+  <ellipse cx="28" cy="45" rx="11" ry="8" fill="#FFFFFF"/>
+</svg>

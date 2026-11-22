@@ -78,8 +78,16 @@ public sealed partial class OverlayViewModel : ObservableObject
 
     public string PlayGlyph => IsPlaying ? "" : "";
 
-    /// <summary>Filled heart when the track is in Liked Songs.</summary>
-    public string LikeGlyph => IsLiked == true ? "" : "";
+    /// <summary>Spotify's like signs: a circled plus, or a filled check once in Liked Songs.</summary>
+    public string LikeGlyph => IsLiked == true ? "" : "";
+
+    /// <summary>The card may cut long names short, so the tooltip always has all of it.</summary>
+    public string TrackTip => (Artist.Length > 0 ? $"{Title}\n{Artist}" : Title) + "\n\nSpotify'da aç";
+
+    partial void OnTitleChanged(string value) => OnPropertyChanged(nameof(TrackTip));
+
+    partial void OnArtistChanged(string value) => OnPropertyChanged(nameof(TrackTip));
+
 
     public Brush LikeBrush => IsLiked == true ? LikedBrush : Brushes.White;
 

@@ -67,7 +67,11 @@
 
     <StackPanel Margin="28,22,28,22">
         <StackPanel x:Name="IntroPage">
-            <TextBlock Style="{StaticResource Title}" Text="Tunelay'e hoş geldiniz" />
+            <StackPanel Orientation="Horizontal" Margin="0,0,0,10">
+                <Image Width="40" Height="40" Source="pack://application:,,,/Tunelay;component/Assets/Tunelay.png"
+                       RenderOptions.BitmapScalingMode="HighQuality" />
+                <TextBlock Style="{StaticResource Title}" Text="Tunelay'e hoş geldiniz" Margin="12,0,0,0" VerticalAlignment="Center" />
+            </StackPanel>
             <TextBlock Style="{StaticResource Body}"
                        Text="Spotify masaüstü uygulamanızı kart ve kısayollarla yönetir. Spotify kapalıysa Oynat'a basınca arkada açar." />
 
@@ -85,7 +89,7 @@
                 <StackPanel>
                     <TextBlock Text="Hesapla" FontSize="14" FontWeight="SemiBold" />
                     <TextBlock Style="{StaticResource Body}" Margin="0,4,0,12"
-                               Text="Ayrıca ruh hali listeleri, ♡ beğenme ve ＋ listeye ekleme. Spotify Premium ve birkaç dakikalık tek seferlik kurulum ister. Sonra da bağlayabilirsiniz." />
+                               Text="Ayrıca ruh hali listeleri, beğenme ve listeye ekleme. Spotify Premium ve birkaç dakikalık tek seferlik kurulum ister. Sonra da bağlayabilirsiniz." />
                     <Button Content="Hesabımı bağla" HorizontalAlignment="Left" Click="OnConnectAccount" />
                 </StackPanel>
             </Border>

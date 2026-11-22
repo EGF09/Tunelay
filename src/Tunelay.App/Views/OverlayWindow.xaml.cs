@@ -19,6 +19,7 @@ public enum CardCommand
     AddToMood,
     Shuffle,
     Repeat,
+    OpenInSpotify,
 }
 
 /// <summary>Where and how the card is shown; built from <see cref="AppSettings"/>.</summary>
@@ -399,6 +400,7 @@ public partial class OverlayWindow : Window
         var idle = _highlighted ? Math.Max(_layout.IdleOpacity, _layout.ActiveOpacity) : _layout.IdleOpacity;
         Anim.Fade(this, _moveMode ? 1 : passive ? idle : _layout.ActiveOpacity, _highlighted ? 220 : 400);
         Reveal(Controls, !passive);
+        ShowAttribution(full: !passive, animate: IsVisible && !_userHidden);
         Controls.IsHitTestVisible = !_moveMode;
         MoveFrame.Visibility = _moveMode ? Visibility.Visible : Visibility.Collapsed;
         Reveal(MoodRow, _unlocked && (_fullscreen || !_layout.DockOn));
@@ -411,6 +413,32 @@ public partial class OverlayWindow : Window
         {
             Show();
         }
+    }
+
+    private const double LogoIconPart = 21; // the icon's share of the 73 wide logo, short of the "S"
+    private bool _logoFull;
+    private int _logoChange;
+
+    /// <summary>At rest the Spotify icon, unlocked the full logo unfolded out of it. One of them always shows.</summary>
+    private void ShowAttribution(bool full, bool animate)
+    {
+        if (full == _logoFull)
+        {
+            return; // Apply runs often; only a real change moves the logo
+        }
+
+        _logoFull = full;
+        var change = ++_logoChange;
+        SpotifyIcon.Visibility = Visibility.Collapsed;
+        SpotifyLogo.Visibility = Visibility.Visible;
+        Anim.Unfold(SpotifyLogo, LogoIconPart, full, animate, () =>
+        {
+            if (change == _logoChange && !full)
+            {
+                SpotifyLogo.Visibility = Visibility.Collapsed;
+                SpotifyIcon.Visibility = Visibility.Visible;
+            }
+        });
     }
 
     /// <summary>
@@ -528,4 +556,13 @@ public partial class OverlayWindow : Window
     private void OnLike(object sender, RoutedEventArgs e) => Raise(CardCommand.Like);
 
     private void OnAddToMood(object sender, RoutedEventArgs e) => Raise(CardCommand.AddToMood);
+
+    private void OnTrackLink(object sender, MouseButtonEventArgs e)
+    {
+        e.Handled = true;
+        if (_unlocked)
+        {
+            Raise(CardCommand.OpenInSpotify);
+        }
+    }
 }

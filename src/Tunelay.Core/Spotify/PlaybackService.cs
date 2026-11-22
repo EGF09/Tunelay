@@ -188,7 +188,7 @@ public sealed class PlaybackService(ISpotifyApi api, Func<bool> isSignedIn, bool
                 throw;
             }
 
-            Info?.Invoke(liked ? $"“{track.Name}” beğenilenlerden çıkarıldı" : $"♥ “{track.Name}” beğenilenlere eklendi");
+            Info?.Invoke(liked ? $"“{track.Name}” beğenilenlerden çıkarıldı" : $"✓ “{track.Name}” beğenilenlere eklendi");
         }
         finally
         {

@@ -74,6 +74,57 @@ public static class Anim
         }
     }
 
+    /// <summary>
+    /// A logo unfolds out of its icon: the icon slides left and the wordmark appears behind it, or the reverse.
+    /// The right edge stays put and layout isn't touched. A change midway carries on from where it is.
+    /// </summary>
+    /// <param name="logo">The full logo, with its width set.</param>
+    /// <param name="folded">How much of the logo's left side is the icon.</param>
+    /// <param name="open">Unfold, or fold up.</param>
+    /// <param name="animate">False jumps to the end, e.g. while the card is hidden.</param>
+    /// <param name="done">Runs at the end. An interrupted animation may still run it.</param>
+    public static void Unfold(FrameworkElement logo, double folded, bool open, bool animate, Action done)
+    {
+        const double tall = 100; // taller than any logo: only the width is being cut
+        var full = logo.Width;
+        var shift = Parts(logo).Translate;
+        if (logo.Clip is not RectangleGeometry { IsFrozen: false } clip)
+        {
+            clip = new RectangleGeometry(new Rect(0, 0, open ? folded : full, tall));
+            logo.Clip = clip;
+            shift.X = open ? full - folded : 0;
+        }
+
+        var fromRect = clip.Rect;
+        var fromX = shift.X;
+        var toRect = new Rect(0, 0, open ? full : folded, tall);
+        var toX = open ? 0 : full - folded;
+
+        clip.Rect = toRect; // base values: what stays once the animations stop
+        shift.X = toX;
+        if (!Enabled || !animate)
+        {
+            clip.BeginAnimation(RectangleGeometry.RectProperty, null);
+            shift.BeginAnimation(TranslateTransform.XProperty, null);
+            done();
+            return;
+        }
+
+        var ms = open ? 220 : 180;
+        var reveal = new RectAnimation(fromRect, toRect, TimeSpan.FromMilliseconds(ms))
+        {
+            EasingFunction = EaseOut,
+            FillBehavior = FillBehavior.Stop,
+        };
+        Timeline.SetDesiredFrameRate(reveal, FrameRate);
+        reveal.Completed += (_, _) => done(); // before BeginAnimation, which copies the animation
+        var slide = Make(fromX, toX, ms);
+        slide.FillBehavior = FillBehavior.Stop;
+
+        clip.BeginAnimation(RectangleGeometry.RectProperty, reveal);
+        shift.BeginAnimation(TranslateTransform.XProperty, slide);
+    }
+
     // ---------- Glyph effects (all end at rest) ----------
 
     /// <summary>Grow and settle back (liked, repeat-one).</summary>

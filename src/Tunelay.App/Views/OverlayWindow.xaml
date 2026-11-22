@@ -75,18 +75,38 @@
         <Border x:Name="Card" Background="{StaticResource CardBrush}" CornerRadius="14"
                 BorderBrush="{StaticResource CardBorderBrush}" BorderThickness="1" Padding="10,10,10,8">
             <StackPanel>
-                <!-- Track -->
+                <!-- Track: all of it links back to Spotify. The logo has its own animation, outside the row's. -->
+                <Grid x:Name="TrackLink" Background="Transparent" Cursor="Hand" ToolTip="{Binding TrackTip}"
+                      MouseLeftButtonUp="OnTrackLink">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*" />
+                        <ColumnDefinition Width="Auto" />
+                    </Grid.ColumnDefinitions>
+                    <!-- Spotify's rules: official files, half an icon of clear space around them. At rest the small card has
+                         room only for the icon (at least 21 px); unlocked it is the full logo (at least 70 px). -->
+                    <Image x:Name="SpotifyIcon" Grid.Column="1" Width="22" Margin="11,0,1,0" VerticalAlignment="Center"
+                           RenderOptions.BitmapScalingMode="HighQuality">
+                        <Image.Source>
+                            <BitmapImage UriSource="pack://application:,,,/Tunelay;component/Assets/SpotifyIcon.png" DecodePixelWidth="88" />
+                        </Image.Source>
+                    </Image>
+                    <Image x:Name="SpotifyLogo" Grid.Column="1" Width="73" Margin="10,0,0,0" VerticalAlignment="Center"
+                           Visibility="Collapsed" RenderOptions.BitmapScalingMode="HighQuality">
+                        <Image.Source>
+                            <BitmapImage UriSource="pack://application:,,,/Tunelay;component/Assets/SpotifyLogo.png" DecodePixelWidth="292" />
+                        </Image.Source>
+                    </Image>
                 <Grid x:Name="TrackRow">
                     <Grid.ColumnDefinitions>
                         <ColumnDefinition Width="Auto" />
                         <ColumnDefinition Width="*" />
                     </Grid.ColumnDefinitions>
-                    <Border Width="44" Height="44" CornerRadius="8" Background="#22FFFFFF" ClipToBounds="True">
+                    <Border Width="44" Height="44" CornerRadius="4" Background="#22FFFFFF" ClipToBounds="True">
                         <Grid>
                             <TextBlock Text="&#xE8D6;" FontFamily="{StaticResource IconFont}" FontSize="18"
                                        Foreground="{StaticResource SubtleTextBrush}"
                                        HorizontalAlignment="Center" VerticalAlignment="Center" />
-                            <Image Source="{Binding ImageUrl, TargetNullValue={x:Null}}" Stretch="UniformToFill"
+                            <Image Source="{Binding ImageUrl, TargetNullValue={x:Null}}" Stretch="Uniform"
                                    RenderOptions.BitmapScalingMode="HighQuality" />
                         </Grid>
                     </Border>
@@ -99,6 +119,7 @@
                             <Run Text="{Binding MoodSuffix, Mode=OneWay}" Foreground="{Binding MoodBrush, Mode=OneWay}" />
                         </TextBlock>
                     </StackPanel>
+                </Grid>
                 </Grid>
 
                 <!-- Controls -->
@@ -117,8 +138,12 @@
                     <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Opacity="{Binding AccountOpacity}">
                         <Button x:Name="LikeButton" Style="{StaticResource IconButton}" Content="{Binding LikeGlyph}"
                                 Foreground="{Binding LikeBrush}" ToolTip="Beğenilen Şarkılar'a ekle / çıkar" Click="OnLike" />
-                        <Button x:Name="AddButton" Style="{StaticResource IconButton}" Content="&#xE710;"
-                                ToolTip="Aktif modun çalma listesine ekle" Click="OnAddToMood" />
+                        <!-- A list with a plus: a bare plus would read as a second like button. -->
+                        <Button x:Name="AddButton" Style="{StaticResource IconButton}"
+                                ToolTip="Aktif modun çalma listesine ekle" Click="OnAddToMood">
+                            <Path Data="M0,1 H11 M0,5.5 H11 M0,10 H6 M11.5,7 V14 M8,10.5 H15" StrokeThickness="1.4"
+                                  Stroke="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Button}}" />
+                        </Button>
                     </StackPanel>
                 </Grid>
 

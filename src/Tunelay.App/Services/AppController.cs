@@ -155,7 +155,7 @@ public sealed class AppController : IAsyncDisposable
         }
         else if (_session.IsSignedIn && !_session.HasScope("user-library-modify"))
         {
-            ShowToast("Beğenme (♡) için izin gerekli: Ayarlar → Spotify → İzinleri yenile.");
+            ShowToast("Beğenme (⊕) için izin gerekli:Ayarlar → Spotify → İzinleri yenile.");
         }
     }
 
@@ -531,7 +531,26 @@ public sealed class AppController : IAsyncDisposable
                 }
 
                 break;
+            case CardCommand.OpenInSpotify:
+                OpenInSpotify();
+                break;
         }
+    }
+
+    private DateTime _leaveGameUntil;
+
+    private void OpenInSpotify()
+    {
+        // Opening Spotify leaves a fullscreen game, so a stray click there isn't enough.
+        if (_fullscreen && DateTime.UtcNow > _leaveGameUntil)
+        {
+            _leaveGameUntil = DateTime.UtcNow.AddSeconds(3);
+            ShowToast("Spotify açılınca oyundan çıkılır. Açmak için tekrar tıklayın.");
+            return;
+        }
+
+        _leaveGameUntil = default;
+        OpenBrowser(SpotifyLink.For(_playback.Current?.Item?.Uri, SpotifyLauncher.CanOpenLinks));
     }
 
     private Task AddToMoodAsync() => RunMoodAsync(async () =>
@@ -607,16 +626,18 @@ public sealed class AppController : IAsyncDisposable
         {
             ToolTipText = "Tunelay",
             ContextMenu = menu,
-            IconSource = new GeneratedIconSource
-            {
-                Text = "♪",
-                Foreground = Brushes.White,
-                Background = new SolidColorBrush(Color.FromRgb(0x1E, 0xD7, 0x60)),
-                FontSize = 48,
-            },
+            Icon = LoadTrayIcon(),
         };
         _tray.TrayMouseDoubleClick += (_, _) => OpenSettings();
         ShowTrayIcon();
+    }
+
+    /// <summary>The frame drawn for the tray's size at this display scale, so Windows doesn't blur a bigger one.</summary>
+    private System.Drawing.Icon LoadTrayIcon()
+    {
+        var pixels = (int)Math.Round(SystemParameters.SmallIconWidth * VisualTreeHelper.GetDpi(_card).DpiScaleX);
+        using var file = Application.GetResourceStream(new Uri("pack://application:,,,/Tunelay;component/Assets/Tunelay.ico")).Stream;
+        return new System.Drawing.Icon(file, pixels, pixels);
     }
 
     private void ShowTrayIcon()

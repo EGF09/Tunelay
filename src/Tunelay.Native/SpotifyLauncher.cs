@@ -36,10 +36,19 @@ public sealed class SpotifyLauncher : ISpotifyLauncher
         }
 
         // Only when something handles the link, otherwise Windows shows a "pick an app" dialog over the game.
-        using var protocol = Registry.ClassesRoot.OpenSubKey("spotify");
-        if (protocol is not null)
+        if (CanOpenLinks)
         {
             yield return ("spotify:", null);
+        }
+    }
+
+    /// <summary>Whether something on this PC handles spotify: links.</summary>
+    public static bool CanOpenLinks
+    {
+        get
+        {
+            using var protocol = Registry.ClassesRoot.OpenSubKey("spotify");
+            return protocol is not null;
         }
     }
 

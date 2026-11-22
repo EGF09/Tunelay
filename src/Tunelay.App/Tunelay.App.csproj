@@ -10,6 +10,15 @@
     <PackageReference Include="H.NotifyIcon.Wpf" Version="2.4.1" />
   </ItemGroup>
 
+  <ItemGroup>
+    <!-- Spotify's official white logo and icon, unmodified, from developer.spotify.com/documentation/design -->
+    <Resource Include="Assets\SpotifyLogo.png" />
+    <Resource Include="Assets\SpotifyIcon.png" />
+    <!-- Tunelay's own logo; Tunelay.svg is the master drawing. -->
+    <Resource Include="Assets\Tunelay.ico" />
+    <Resource Include="Assets\Tunelay.png" />
+  </ItemGroup>
+
   <PropertyGroup>
     <OutputType>WinExe</OutputType>
     <TargetFramework>net10.0-windows10.0.19041.0</TargetFramework>
@@ -19,6 +28,8 @@
     <AssemblyName>Tunelay</AssemblyName>
     <RootNamespace>Tunelay.App</RootNamespace>
     <Product>Tunelay</Product>
+    <!-- Also the taskbar and title bar icon: WPF takes it from the exe. -->
+    <ApplicationIcon>Assets\Tunelay.ico</ApplicationIcon>
   </PropertyGroup>
 
 </Project>

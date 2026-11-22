@@ -463,7 +463,7 @@ public partial class SettingsWindow : Window
         StatusText.Text = text;
         StatusBadge.Background = new SolidColorBrush((Color)ColorConverter.ConvertFromString(bg));
         AuthStatus.Text = error ?? (signedIn && !_session.HasScope("user-library-modify")
-            ? "♡ için İzinleri yenile'ye basın."
+            ? "Beğenme (⊕) için İzinleri yenile'ye basın."
             : "");
         Anim.Enter(StatusBadge, 0, 180, 0.3);
     }
