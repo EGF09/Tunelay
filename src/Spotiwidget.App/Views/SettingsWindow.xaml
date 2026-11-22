@@ -1,0 +1,119 @@
+<Window x:Class="Spotiwidget.App.Views.SettingsWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="Spotiwidget Ayarları" Width="560" Height="720" MinWidth="480" MinHeight="480"
+        WindowStartupLocation="CenterScreen" Background="#FF181818" Foreground="#FFF2F2F2"
+        FontSize="13">
+    <Window.Resources>
+        <Style TargetType="TextBlock" x:Key="Section">
+            <Setter Property="FontSize" Value="15" />
+            <Setter Property="FontWeight" Value="SemiBold" />
+            <Setter Property="Margin" Value="0,18,0,8" />
+        </Style>
+        <Style TargetType="TextBlock" x:Key="Hint">
+            <Setter Property="Foreground" Value="#FFA7A7A7" />
+            <Setter Property="FontSize" Value="12" />
+            <Setter Property="TextWrapping" Value="Wrap" />
+        </Style>
+        <Style TargetType="Button">
+            <Setter Property="Padding" Value="12,5" />
+            <Setter Property="Margin" Value="0,0,8,0" />
+        </Style>
+        <Style TargetType="TextBox">
+            <Setter Property="Padding" Value="4,3" />
+        </Style>
+        <!-- Color dropdown items are "#RRGGBB" strings shown as round swatches. -->
+        <DataTemplate x:Key="SwatchTemplate">
+            <Border Width="18" Height="18" CornerRadius="9" Background="{Binding}" />
+        </DataTemplate>
+    </Window.Resources>
+
+    <DockPanel Margin="20,8,20,16">
+        <StackPanel DockPanel.Dock="Bottom" Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,12,0,0">
+            <Button Content="İptal" IsCancel="True" Click="OnCancel" />
+            <Button Content="Kaydet" IsDefault="True" Click="OnSave" Margin="0" />
+        </StackPanel>
+
+        <ScrollViewer VerticalScrollBarVisibility="Auto">
+            <StackPanel>
+                <TextBlock Style="{StaticResource Section}" Text="Spotify bağlantısı" />
+                <TextBlock Style="{StaticResource Hint}" Margin="0,0,0,6"
+                           Text="developer.spotify.com/dashboard üzerinden bir uygulama oluşturun, aşağıdaki Redirect URI'yi ekleyin ve Client ID'yi yapıştırın." />
+                <Grid>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="110" />
+                        <ColumnDefinition Width="*" />
+                    </Grid.ColumnDefinitions>
+                    <Grid.RowDefinitions>
+                        <RowDefinition />
+                        <RowDefinition />
+                    </Grid.RowDefinitions>
+                    <TextBlock Text="Client ID" VerticalAlignment="Center" />
+                    <TextBox x:Name="ClientIdBox" Grid.Column="1" />
+                    <TextBlock Grid.Row="1" Text="Redirect URI" VerticalAlignment="Center" Margin="0,6,0,0" />
+                    <TextBox x:Name="RedirectBox" Grid.Row="1" Grid.Column="1" IsReadOnly="True" Margin="0,6,0,0" />
+                </Grid>
+                <StackPanel Orientation="Horizontal" Margin="0,10,0,0">
+                    <Button x:Name="ConnectButton" Content="Spotify'a bağlan" Click="OnConnect" />
+                    <TextBlock x:Name="AuthStatus" VerticalAlignment="Center" Style="{StaticResource Hint}" />
+                </StackPanel>
+
+                <TextBlock Style="{StaticResource Section}" Text="Ruh halleri" />
+                <TextBlock Style="{StaticResource Hint}" Margin="0,0,0,6"
+                           Text="Renk, isim ve çalma listesi seçin. Düğmeye basınca liste karışık çalar. Sıra, panelde ve Ctrl+Alt+M ile geçişte kullanılır." />
+                <StackPanel x:Name="MoodList" />
+                <StackPanel Orientation="Horizontal" Margin="0,8,0,0">
+                    <Button Content="＋ Ruh hali ekle" Click="OnAddMood" />
+                    <Button Content="Listeleri yenile" Click="OnRefreshPlaylists" />
+                </StackPanel>
+
+                <TextBlock Style="{StaticResource Section}" Text="Görünüm" />
+                <Grid>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="110" />
+                        <ColumnDefinition Width="*" />
+                    </Grid.ColumnDefinitions>
+                    <Grid.RowDefinitions>
+                        <RowDefinition />
+                        <RowDefinition />
+                        <RowDefinition />
+                    </Grid.RowDefinitions>
+                    <TextBlock Text="Ekran köşesi" VerticalAlignment="Center" />
+                    <StackPanel Grid.Column="1" Orientation="Horizontal">
+                        <ComboBox x:Name="CornerBox" MinWidth="180" />
+                        <Button Content="Köşeye geri al" Click="OnResetPositions" Margin="8,0,0,0"
+                                ToolTip="Taşıma modunda sürüklediğiniz kart ve panel konumlarını sıfırlar" />
+                    </StackPanel>
+                    <TextBlock Grid.Row="1" Text="Boşta opaklık" VerticalAlignment="Center" Margin="0,10,0,0" />
+                    <DockPanel Grid.Row="1" Grid.Column="1" Margin="0,10,0,0">
+                        <TextBlock x:Name="IdleOpacityText" DockPanel.Dock="Right" Width="44" TextAlignment="Right" VerticalAlignment="Center" />
+                        <Slider x:Name="IdleOpacitySlider" Minimum="0" Maximum="100" SmallChange="5" LargeChange="10"
+                                IsSnapToTickEnabled="True" TickFrequency="5" VerticalAlignment="Center"
+                                ToolTip="Kart tıklamaları geçirirken (yalnızca şarkı bilgisi). %0 = tamamen görünmez" />
+                    </DockPanel>
+                    <TextBlock Grid.Row="2" Text="Etkileşim opaklığı" VerticalAlignment="Center" Margin="0,6,0,0" TextWrapping="Wrap" />
+                    <DockPanel Grid.Row="2" Grid.Column="1" Margin="0,6,0,0">
+                        <TextBlock x:Name="ActiveOpacityText" DockPanel.Dock="Right" Width="44" TextAlignment="Right" VerticalAlignment="Center" />
+                        <Slider x:Name="ActiveOpacitySlider" Minimum="10" Maximum="100" SmallChange="5" LargeChange="10"
+                                IsSnapToTickEnabled="True" TickFrequency="5" VerticalAlignment="Center"
+                                ToolTip="Etkileşim tuşuyla açıldığında" />
+                    </DockPanel>
+                </Grid>
+                <TextBlock Style="{StaticResource Hint}" Margin="0,6,0,0"
+                           Text="Kart normalde şeffaf durur ve tıklamaları geçirir; etkileşim tuşuyla (varsayılan Ctrl+Alt+Space) düğmeler açılır. Kartı ve paneli taşımak için Ctrl+Alt+D veya tepsi menüsü → Taşıma modu." />
+                <CheckBox x:Name="ShowMoodDockBox" Margin="0,10,0,0" Foreground="#FFF2F2F2"
+                          Content="Ruh hali düğmelerini masaüstünde göster (pencerelerin arkasında)" />
+
+                <TextBlock Style="{StaticResource Section}" Text="Kısayol tuşları" />
+                <TextBlock Style="{StaticResource Hint}" Margin="0,0,0,6"
+                           Text="Kutuya tıklayıp yeni kombinasyona basın. Ctrl/Alt/Shift/Win ile birlikte ya da tek başına F1–F24, Pause, Scroll Lock, Insert. Silmek için Backspace. (Dizüstü Fn tuşu Windows'a ulaşmadığı için seçilemez.)" />
+                <Grid x:Name="HotkeyGrid">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="250" />
+                        <ColumnDefinition Width="*" />
+                    </Grid.ColumnDefinitions>
+                </Grid>
+            </StackPanel>
+        </ScrollViewer>
+    </DockPanel>
+</Window>
