@@ -20,7 +20,13 @@
                 <Setter.Value>
                     <ControlTemplate TargetType="Button">
                         <Border x:Name="Bg" CornerRadius="17" Background="#00FFFFFF" RenderTransformOrigin="0.5,0.5">
-                            <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center" />
+                            <!-- The glyph animates inside this clipped stage, so it can slide out and back in. -->
+                            <Grid x:Name="Stage" ClipToBounds="True">
+                                <ContentPresenter x:Name="Glyph" HorizontalAlignment="Center" VerticalAlignment="Center" />
+                                <!-- Old icon during the play/pause morph (font and color inherit from the button). -->
+                                <TextBlock x:Name="Ghost" Opacity="0" IsHitTestVisible="False"
+                                           HorizontalAlignment="Center" VerticalAlignment="Center" />
+                            </Grid>
                         </Border>
                         <ControlTemplate.Triggers>
                             <!-- Hover: background fades in/out instead of snapping. -->
@@ -101,17 +107,17 @@
                     <StackPanel Orientation="Horizontal" HorizontalAlignment="Left">
                         <Button x:Name="ShuffleButton" Style="{StaticResource IconButton}" Content="&#xE8B1;"
                                 Foreground="{Binding ShuffleBrush}" ToolTip="{Binding ShuffleTip}" Click="OnShuffle" />
-                        <Button Style="{StaticResource IconButton}" Content="&#xE892;" ToolTip="Önceki" Click="OnPrevious" />
-                        <Button Style="{StaticResource IconButton}" Content="{Binding PlayGlyph}" FontSize="16"
+                        <Button x:Name="PrevButton" Style="{StaticResource IconButton}" Content="&#xE892;" ToolTip="Önceki" Click="OnPrevious" />
+                        <Button x:Name="PlayButton" Style="{StaticResource IconButton}" Content="{Binding PlayGlyph}" FontSize="16"
                                 ToolTip="Oynat / Duraklat" Click="OnPlayPause" />
-                        <Button Style="{StaticResource IconButton}" Content="&#xE893;" ToolTip="Sonraki" Click="OnNext" />
+                        <Button x:Name="NextButton" Style="{StaticResource IconButton}" Content="&#xE893;" ToolTip="Sonraki" Click="OnNext" />
                         <Button x:Name="RepeatButton" Style="{StaticResource IconButton}" Content="{Binding RepeatGlyph}"
                                 Foreground="{Binding RepeatBrush}" ToolTip="{Binding RepeatTip}" Click="OnRepeat" />
                     </StackPanel>
                     <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
                         <Button x:Name="LikeButton" Style="{StaticResource IconButton}" Content="{Binding LikeGlyph}"
                                 Foreground="{Binding LikeBrush}" ToolTip="Beğenilen Şarkılar'a ekle / çıkar" Click="OnLike" />
-                        <Button Style="{StaticResource IconButton}" Content="&#xE710;"
+                        <Button x:Name="AddButton" Style="{StaticResource IconButton}" Content="&#xE710;"
                                 ToolTip="Aktif modun çalma listesine ekle" Click="OnAddToMood" />
                     </StackPanel>
                 </Grid>
@@ -123,8 +129,17 @@
                         <ColumnDefinition Width="*" />
                         <ColumnDefinition Width="36" />
                     </Grid.ColumnDefinitions>
-                    <TextBlock Text="&#xE767;" FontFamily="{StaticResource IconFont}" FontSize="13"
-                               Foreground="{StaticResource SubtleTextBrush}" VerticalAlignment="Center" />
+                    <Grid VerticalAlignment="Center">
+                        <TextBlock x:Name="VolumeIcon" Text="&#xE767;" FontFamily="{StaticResource IconFont}" FontSize="13"
+                                   Foreground="{StaticResource SubtleTextBrush}" VerticalAlignment="Center" />
+                        <!-- Sound waves: invisible at rest, ripple out/in when the volume changes. -->
+                        <Canvas HorizontalAlignment="Right" VerticalAlignment="Center" Width="0" Height="12" IsHitTestVisible="False">
+                            <Path x:Name="Wave1" Canvas.Left="2" Data="M0,1 A6,6 0 0 1 0,11" Stroke="{StaticResource TextBrush}"
+                                  StrokeThickness="1.2" Opacity="0" RenderTransformOrigin="0,0.5" />
+                            <Path x:Name="Wave2" Canvas.Left="5" Data="M0,-1 A8,8 0 0 1 0,13" Stroke="{StaticResource TextBrush}"
+                                  StrokeThickness="1.2" Opacity="0" RenderTransformOrigin="0,0.5" />
+                        </Canvas>
+                    </Grid>
                     <Slider x:Name="VolumeSlider" Grid.Column="1" Style="{StaticResource FlatSlider}" Margin="10,0"
                             Minimum="0" Maximum="100" IsMoveToPointEnabled="True" Focusable="False"
                             Value="{Binding Volume, Mode=OneWay, TargetNullValue=0}"
@@ -142,6 +157,8 @@
         <Rectangle x:Name="MoveFrame" RadiusX="14" RadiusY="14" Stroke="{StaticResource AccentBrush}"
                    StrokeThickness="2" StrokeDashArray="4 3" Fill="#01000000" Cursor="SizeAll"
                    Visibility="Collapsed" ToolTip="Sürükleyerek taşıyın" />
+        <!-- Effects that may leave a button (heart particles). Never takes input. -->
+        <Canvas x:Name="FxLayer" IsHitTestVisible="False" />
         </Grid>
     </StackPanel>
 </Window>

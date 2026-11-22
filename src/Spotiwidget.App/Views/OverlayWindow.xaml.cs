@@ -1,5 +1,7 @@
 using System.Windows;
+using System.Windows.Controls;
 using System.Windows.Input;
+using System.Windows.Media;
 using System.Windows.Interop;
 using System.Windows.Threading;
 using Spotiwidget.App.ViewModels;
@@ -49,6 +51,8 @@ public partial class OverlayWindow : Window
     private readonly DispatcherTimer _highlightTimer = new() { Interval = TimeSpan.FromSeconds(3) };
     private bool _highlighted; // new song: briefly shown at full (active) opacity while still click-through
     private string? _lastTrackId;
+    private bool? _lastLiked;
+    private int? _lastVolume;
     private nint _hwnd;
     private CardLayout _layout = new(ScreenCorner.BottomRight, null, null, true, true, 0.6, 1);
     private bool _fullscreen;
@@ -284,20 +288,71 @@ public partial class OverlayWindow : Window
                 OnTrackMaybeChanged();
                 break;
 
-            // Liked: the heart pops.
-            case nameof(OverlayViewModel.IsLiked) when _vm.IsLiked == true:
-                Anim.Pop(LikeButton);
+            // These follow the state, so they also play when changed from the Spotify app.
+            case nameof(OverlayViewModel.IsLiked):
+                OnLikedChanged();
                 break;
-
-            // Shuffle turned on/off: a smaller pop.
+            case nameof(OverlayViewModel.IsPlaying):
+                // Morph from the icon that was showing (play ▶ when it starts, pause ⏸ when it stops).
+                Anim.Morph(GlyphOf(PlayButton), GhostOf(PlayButton), _vm.IsPlaying ? "" : "");
+                break;
             case nameof(OverlayViewModel.IsShuffle):
-                Anim.Pop(ShuffleButton, 1.2, 220);
+                Anim.Helix(GlyphOf(ShuffleButton));
                 break;
-
             case nameof(OverlayViewModel.RepeatState):
-                Anim.Pop(RepeatButton, 1.2, 220);
+                Anim.Spin(GlyphOf(RepeatButton));
+                if (_vm.RepeatState == Spotiwidget.Core.Spotify.RepeatMode.Track)
+                {
+                    Anim.Pop(GlyphOf(RepeatButton), 1.2, 450);
+                }
+
+                break;
+            case nameof(OverlayViewModel.Volume):
+                if (_lastVolume is { } before && _vm.Volume is { } now && now != before)
+                {
+                    Anim.Waves(Wave1, Wave2, outward: now > before);
+                }
+
+                _lastVolume = _vm.Volume;
                 break;
         }
+    }
+
+    /// <summary>
+    /// Heart burst when the current song goes from not-liked to liked; shrink on the way back.
+    /// A new song arriving (liked state unknown → known) doesn't animate.
+    /// </summary>
+    private void OnLikedChanged()
+    {
+        var before = _lastLiked;
+        _lastLiked = _vm.IsLiked;
+        var glyph = GlyphOf(LikeButton);
+        if (before == false && _vm.IsLiked == true)
+        {
+            Anim.Pop(glyph);
+            if (LikeButton.IsVisible)
+            {
+                var center = LikeButton.TranslatePoint(new Point(LikeButton.ActualWidth / 2, LikeButton.ActualHeight / 2), FxLayer);
+                Anim.Burst(FxLayer, center, (Brush)FindResource("AccentBrush"));
+            }
+        }
+        else if (before == true && _vm.IsLiked == false)
+        {
+            Anim.Shrink(glyph);
+        }
+    }
+
+    /// <summary>The animated glyph inside a card button (falls back to the button before its template exists).</summary>
+    private static UIElement GlyphOf(Button button)
+    {
+        button.ApplyTemplate();
+        return button.Template?.FindName("Glyph", button) as UIElement ?? button;
+    }
+
+    private static TextBlock GhostOf(Button button)
+    {
+        button.ApplyTemplate();
+        return button.Template?.FindName("Ghost", button) as TextBlock ?? new TextBlock();
     }
 
     /// <summary>
@@ -416,7 +471,28 @@ public partial class OverlayWindow : Window
     private void Raise(CardCommand command)
     {
         RestartIdle();
+        Feedback(command);
         Command?.Invoke(command);
+    }
+
+    /// <summary>
+    /// The glyph animation for a command (click or hotkey). Play/pause, shuffle, repeat and like
+    /// animate from their state change instead, so they aren't played twice.
+    /// </summary>
+    public void Feedback(CardCommand command)
+    {
+        switch (command)
+        {
+            case CardCommand.Previous:
+                Anim.SlideThrough(GlyphOf(PrevButton), -1);
+                break;
+            case CardCommand.Next:
+                Anim.SlideThrough(GlyphOf(NextButton), +1);
+                break;
+            case CardCommand.AddToMood:
+                Anim.Drop(GlyphOf(AddButton));
+                break;
+        }
     }
 
     private void OnVolumeCommitted(object sender, MouseButtonEventArgs e)

@@ -273,9 +273,11 @@ public sealed class AppController : IAsyncDisposable
                 _ = _playback.TogglePlayPauseAsync();
                 break;
             case HotkeyAction.Next:
+                _card.Feedback(CardCommand.Next);
                 _ = _playback.NextAsync();
                 break;
             case HotkeyAction.Previous:
+                _card.Feedback(CardCommand.Previous);
                 _ = _playback.PreviousAsync();
                 break;
             case HotkeyAction.VolumeUp:
@@ -288,6 +290,7 @@ public sealed class AppController : IAsyncDisposable
                 _ = _playback.ToggleLikeAsync();
                 break;
             case HotkeyAction.SaveToMood:
+                _card.Feedback(CardCommand.AddToMood);
                 _ = RunMoodAsync(() => _moods.SaveTrackToActiveAsync(_playback.Current?.Item));
                 break;
             case HotkeyAction.CycleMood:
