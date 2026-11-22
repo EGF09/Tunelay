@@ -57,6 +57,9 @@ public sealed class AppSettings
     /// <summary>Card opacity while the interaction key has it unlocked, 0–1.</summary>
     public double ActiveOpacity { get; set; } = 1.0;
 
+    /// <summary>Short UI animations; always off while a fullscreen app is in front.</summary>
+    public bool Animations { get; set; } = true;
+
     /// <summary>Shows the mood buttons as a widget pinned to the desktop (behind windows).</summary>
     public bool ShowMoodDock { get; set; } = true;
 

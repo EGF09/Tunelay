@@ -21,6 +21,13 @@ public static class WindowStyles
     public static void BringToTopmost(nint hwnd) =>
         Win32.SetWindowPos(hwnd, Win32.HWND_TOPMOST, 0, 0, 0, 0, Win32.SWP_NOMOVE | Win32.SWP_NOSIZE | Win32.SWP_NOACTIVATE);
 
+    /// <summary>Dark title bar for a normal window (Windows 10 20H1+ / 11; ignored elsewhere).</summary>
+    public static void UseDarkTitleBar(nint hwnd)
+    {
+        var on = 1;
+        Win32.DwmSetWindowAttribute(hwnd, Win32.DWMWA_USE_IMMERSIVE_DARK_MODE, ref on, sizeof(int));
+    }
+
     public static bool IsClickThrough(nint hwnd) =>
         (Win32.GetWindowLongPtr(hwnd, Win32.GWL_EXSTYLE) & Win32.WS_EX_TRANSPARENT) != 0;
 

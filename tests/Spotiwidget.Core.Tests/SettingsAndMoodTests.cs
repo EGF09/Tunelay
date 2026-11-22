@@ -62,6 +62,7 @@ public class SettingsStoreTests
 
         Assert.Equal("cid", loaded.ClientId);
         Assert.True(loaded.ShowMoodDock);
+        Assert.True(loaded.Animations); // new setting defaults to on for older files
         Assert.Equal("Ctrl+Alt+L", loaded.Hotkeys[HotkeyAction.Like]);
     }
 

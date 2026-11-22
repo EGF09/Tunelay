@@ -116,6 +116,11 @@ internal static partial class Win32
     [LibraryImport("user32.dll")]
     public static partial nint MonitorFromPoint(POINT pt, uint flags);
 
+    public const int DWMWA_USE_IMMERSIVE_DARK_MODE = 20;
+
+    [LibraryImport("dwmapi.dll")]
+    public static partial int DwmSetWindowAttribute(nint hwnd, int attribute, ref int value, int size);
+
     public const int GWL_STYLE = -16;
     public const long WS_CAPTION = 0x00C00000, WS_THICKFRAME = 0x00040000, WS_SYSMENU = 0x00080000,
         WS_MINIMIZEBOX = 0x00020000, WS_MAXIMIZEBOX = 0x00010000;

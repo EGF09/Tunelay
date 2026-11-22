@@ -19,65 +19,38 @@
             <Setter Property="Template">
                 <Setter.Value>
                     <ControlTemplate TargetType="Button">
-                        <Border x:Name="Bg" CornerRadius="17" Background="Transparent">
+                        <Border x:Name="Bg" CornerRadius="17" Background="#00FFFFFF" RenderTransformOrigin="0.5,0.5">
                             <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center" />
                         </Border>
                         <ControlTemplate.Triggers>
+                            <!-- Hover: background fades in/out instead of snapping. -->
                             <Trigger Property="IsMouseOver" Value="True">
-                                <Setter TargetName="Bg" Property="Background" Value="#26FFFFFF" />
+                                <Trigger.EnterActions>
+                                    <BeginStoryboard>
+                                        <Storyboard>
+                                            <ColorAnimation Storyboard.TargetName="Bg" To="#26FFFFFF" Duration="0:0:0.12"
+                                                            Storyboard.TargetProperty="(Border.Background).(SolidColorBrush.Color)" />
+                                        </Storyboard>
+                                    </BeginStoryboard>
+                                </Trigger.EnterActions>
+                                <Trigger.ExitActions>
+                                    <BeginStoryboard>
+                                        <Storyboard>
+                                            <ColorAnimation Storyboard.TargetName="Bg" To="#00FFFFFF" Duration="0:0:0.18"
+                                                            Storyboard.TargetProperty="(Border.Background).(SolidColorBrush.Color)" />
+                                        </Storyboard>
+                                    </BeginStoryboard>
+                                </Trigger.ExitActions>
                             </Trigger>
+                            <!-- Press: shrink slightly. -->
                             <Trigger Property="IsPressed" Value="True">
-                                <Setter TargetName="Bg" Property="Background" Value="#40FFFFFF" />
+                                <Setter TargetName="Bg" Property="RenderTransform">
+                                    <Setter.Value>
+                                        <ScaleTransform ScaleX="0.9" ScaleY="0.9" />
+                                    </Setter.Value>
+                                </Setter>
                             </Trigger>
                         </ControlTemplate.Triggers>
-                    </ControlTemplate>
-                </Setter.Value>
-            </Setter>
-        </Style>
-        <!-- Thin, flat volume slider. -->
-        <Style x:Key="SliderRepeat" TargetType="RepeatButton">
-            <Setter Property="Focusable" Value="False" />
-            <Setter Property="Template">
-                <Setter.Value>
-                    <ControlTemplate TargetType="RepeatButton">
-                        <Border Background="Transparent" />
-                    </ControlTemplate>
-                </Setter.Value>
-            </Setter>
-        </Style>
-        <Style x:Key="VolumeSlider" TargetType="Slider">
-            <Setter Property="Cursor" Value="Hand" />
-            <Setter Property="Template">
-                <Setter.Value>
-                    <ControlTemplate TargetType="Slider">
-                        <Grid Height="16" Background="Transparent">
-                            <Border Height="4" CornerRadius="2" Background="#33FFFFFF" VerticalAlignment="Center" />
-                            <Track x:Name="PART_Track">
-                                <Track.DecreaseRepeatButton>
-                                    <RepeatButton Command="Slider.DecreaseLarge" Style="{StaticResource SliderRepeat}">
-                                        <RepeatButton.Template>
-                                            <ControlTemplate TargetType="RepeatButton">
-                                                <Grid Background="Transparent">
-                                                    <Border Height="4" CornerRadius="2" Background="White" VerticalAlignment="Center" />
-                                                </Grid>
-                                            </ControlTemplate>
-                                        </RepeatButton.Template>
-                                    </RepeatButton>
-                                </Track.DecreaseRepeatButton>
-                                <Track.IncreaseRepeatButton>
-                                    <RepeatButton Command="Slider.IncreaseLarge" Style="{StaticResource SliderRepeat}" />
-                                </Track.IncreaseRepeatButton>
-                                <Track.Thumb>
-                                    <Thumb>
-                                        <Thumb.Template>
-                                            <ControlTemplate TargetType="Thumb">
-                                                <Ellipse Width="12" Height="12" Fill="White" />
-                                            </ControlTemplate>
-                                        </Thumb.Template>
-                                    </Thumb>
-                                </Track.Thumb>
-                            </Track>
-                        </Grid>
                     </ControlTemplate>
                 </Setter.Value>
             </Setter>
@@ -97,7 +70,7 @@
                 BorderBrush="{StaticResource CardBorderBrush}" BorderThickness="1" Padding="10,10,10,8">
             <StackPanel>
                 <!-- Track -->
-                <Grid>
+                <Grid x:Name="TrackRow">
                     <Grid.ColumnDefinitions>
                         <ColumnDefinition Width="Auto" />
                         <ColumnDefinition Width="*" />
@@ -132,7 +105,7 @@
                         <Button Style="{StaticResource IconButton}" Content="&#xE893;" ToolTip="Sonraki" Click="OnNext" />
                     </StackPanel>
                     <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
-                        <Button Style="{StaticResource IconButton}" Content="{Binding LikeGlyph}"
+                        <Button x:Name="LikeButton" Style="{StaticResource IconButton}" Content="{Binding LikeGlyph}"
                                 Foreground="{Binding LikeBrush}" ToolTip="Beğenilen Şarkılar'a ekle / çıkar" Click="OnLike" />
                         <Button Style="{StaticResource IconButton}" Content="&#xE710;"
                                 ToolTip="Aktif modun çalma listesine ekle" Click="OnAddToMood" />
@@ -148,7 +121,7 @@
                     </Grid.ColumnDefinitions>
                     <TextBlock Text="&#xE767;" FontFamily="{StaticResource IconFont}" FontSize="13"
                                Foreground="{StaticResource SubtleTextBrush}" VerticalAlignment="Center" />
-                    <Slider x:Name="VolumeSlider" Grid.Column="1" Style="{StaticResource VolumeSlider}" Margin="10,0"
+                    <Slider x:Name="VolumeSlider" Grid.Column="1" Style="{StaticResource FlatSlider}" Margin="10,0"
                             Minimum="0" Maximum="100" IsMoveToPointEnabled="True" Focusable="False"
                             Value="{Binding Volume, Mode=OneWay, TargetNullValue=0}"
                             PreviewMouseLeftButtonUp="OnVolumeCommitted" />

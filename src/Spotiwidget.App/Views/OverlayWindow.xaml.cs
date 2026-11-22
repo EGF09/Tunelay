@@ -43,6 +43,7 @@ public partial class OverlayWindow : Window
     private readonly DispatcherTimer _leaveTimer;
     private readonly DispatcherTimer _toastTimer;
     private readonly DispatcherTimer _topmostTimer;
+    private DispatcherTimer? _previewTimer;
     private nint _hwnd;
     private CardLayout _layout = new(ScreenCorner.BottomRight, null, null, true, true, 0.6, 1);
     private bool _fullscreen;
@@ -67,8 +68,15 @@ public partial class OverlayWindow : Window
         _toastTimer.Tick += (_, _) =>
         {
             _toastTimer.Stop();
-            ToastBox.Visibility = Visibility.Collapsed;
+            Anim.Fade(ToastBox, 0, 200, () =>
+            {
+                if (!_toastTimer.IsEnabled)
+                {
+                    ToastBox.Visibility = Visibility.Collapsed;
+                }
+            });
         };
+        vm.PropertyChanged += OnViewModelChanged;
 
         MouseEnter += (_, _) =>
         {
@@ -227,9 +235,48 @@ public partial class OverlayWindow : Window
     public void ShowToast(string message)
     {
         _vm.Toast = message;
+        var wasHidden = ToastBox.Visibility != Visibility.Visible;
         ToastBox.Visibility = Visibility.Visible;
+        if (wasHidden || ToastBox.Opacity < 1)
+        {
+            Anim.Enter(ToastBox, 6, 200);
+        }
+
         _toastTimer.Stop();
         _toastTimer.Start();
+    }
+
+    /// <summary>Shows the card at <paramref name="opacity"/> for a moment (live preview from settings).</summary>
+    public void PreviewOpacity(double opacity)
+    {
+        Anim.Fade(this, opacity, 120);
+        _previewTimer ??= new DispatcherTimer { Interval = TimeSpan.FromSeconds(1.5) };
+        _previewTimer.Stop();
+        _previewTimer.Tick -= OnPreviewEnded;
+        _previewTimer.Tick += OnPreviewEnded;
+        _previewTimer.Start();
+    }
+
+    private void OnPreviewEnded(object? sender, EventArgs e)
+    {
+        _previewTimer!.Stop();
+        Apply();
+    }
+
+    private void OnViewModelChanged(object? sender, System.ComponentModel.PropertyChangedEventArgs e)
+    {
+        switch (e.PropertyName)
+        {
+            // New song: the track row fades and slides in.
+            case nameof(OverlayViewModel.Title) when IsVisible:
+                Anim.Enter(TrackRow, 5, 240, 0.2);
+                break;
+
+            // Liked: the heart pops.
+            case nameof(OverlayViewModel.IsLiked) when _vm.IsLiked == true:
+                Anim.Pop(LikeButton);
+                break;
+        }
     }
 
     private void Apply()
@@ -241,11 +288,11 @@ public partial class OverlayWindow : Window
             WindowStyles.SetClickThrough(_hwnd, passive);
         }
 
-        Opacity = _moveMode ? 1 : passive ? _layout.IdleOpacity : _layout.ActiveOpacity;
-        Controls.Visibility = passive ? Visibility.Collapsed : Visibility.Visible;
+        Anim.Fade(this, _moveMode ? 1 : passive ? _layout.IdleOpacity : _layout.ActiveOpacity, 200);
+        Reveal(Controls, !passive);
         Controls.IsHitTestVisible = !_moveMode;
         MoveFrame.Visibility = _moveMode ? Visibility.Visible : Visibility.Collapsed;
-        MoodRow.Visibility = _unlocked && (_fullscreen || !_layout.DockOn) ? Visibility.Visible : Visibility.Collapsed;
+        Reveal(MoodRow, _unlocked && (_fullscreen || !_layout.DockOn));
 
         if (_userHidden && IsVisible)
         {
@@ -287,6 +334,22 @@ public partial class OverlayWindow : Window
             : _layout.Corner is ScreenCorner.BottomLeft or ScreenCorner.BottomRight;
         CardStack.Children.Remove(ToastBox);
         CardStack.Children.Insert(bottom ? 0 : 1, ToastBox);
+    }
+
+    /// <summary>Shows a section with a short slide-in; hides it at once (so the card shrinks immediately).</summary>
+    private static void Reveal(UIElement element, bool show)
+    {
+        if (!show)
+        {
+            element.Visibility = Visibility.Collapsed;
+            return;
+        }
+
+        if (element.Visibility != Visibility.Visible)
+        {
+            element.Visibility = Visibility.Visible;
+            Anim.Enter(element, 8, 200);
+        }
     }
 
     private void RestartIdle()

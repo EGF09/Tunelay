@@ -29,7 +29,14 @@ public static class MoodPills
         {
             var isActive = mood.Id == activeId;
             var color = MoodPalette.Brush(mood.Color);
-            var idle = isActive ? color : new SolidColorBrush(Color.FromArgb(0x1F, 0xFF, 0xFF, 0xFF));
+            Brush idle = new SolidColorBrush(Color.FromArgb(0x1F, 0xFF, 0xFF, 0xFF));
+            if (isActive)
+            {
+                // The newly active mood's color fades in instead of snapping.
+                var fill = color.Clone();
+                Anim.BrushIn(fill);
+                idle = fill;
+            }
             var hot = isActive ? color : MoodPalette.Brush(mood.Color, 0x66);
 
             var content = new StackPanel { Orientation = Orientation.Horizontal };

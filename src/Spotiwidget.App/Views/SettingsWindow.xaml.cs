@@ -2,6 +2,9 @@ using System.Net.Http;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
+using System.Windows.Interop;
+using System.Windows.Media;
+using System.Windows.Threading;
 using Spotiwidget.App.ViewModels;
 using Spotiwidget.Core.Settings;
 using Spotiwidget.Core.Spotify;
@@ -9,8 +12,15 @@ using Spotiwidget.Native;
 
 namespace Spotiwidget.App.Views;
 
+/// <summary>Unsaved look settings, sent while the user edits so the card can preview them.</summary>
+public sealed record SettingsPreview(ScreenCorner Corner, double IdleOpacity, double ActiveOpacity, bool Animations, bool ShowActive);
+
 public partial class SettingsWindow : Window
 {
+    private const string DashboardUrl = "https://developer.spotify.com/dashboard";
+    private const string PressKeyText = "Tuşa basın…";
+    private const string UnassignedText = "Atanmadı";
+
     private static readonly Dictionary<HotkeyAction, string> ActionLabels = new()
     {
         [HotkeyAction.ToggleMenu] = "Etkileşim tuşu (kartı aç)",
@@ -38,63 +48,139 @@ public partial class SettingsWindow : Window
     private readonly SpotifyAuthSession _session;
     private readonly ISpotifyApi _api;
     private readonly Action<string> _openBrowser;
+    private readonly Action<SettingsPreview>? _preview;
     private readonly List<MoodRow> _moodRows = new();
     private readonly Dictionary<HotkeyAction, TextBox> _hotkeyBoxes = new();
+    private readonly Dictionary<HotkeyAction, string> _hotkeyValues = new();
     private List<PlaylistRef> _playlists = new();
     private CancellationTokenSource? _loginCts;
     private bool _resetPositions;
+    private bool _ready;
 
-    /// <summary>One editable mood line: color, name, playlist, delete.</summary>
+    /// <summary>One editable mood line: stripe, color, name, playlist, reorder, delete.</summary>
     private sealed record MoodRow(string Id, FrameworkElement Root, ComboBox Color, TextBox Name, ComboBox Playlist);
 
-    public SettingsWindow(SettingsStore store, SpotifyAuthSession session, ISpotifyApi api, Action<string> openBrowser)
+    public SettingsWindow(SettingsStore store, SpotifyAuthSession session, ISpotifyApi api, Action<string> openBrowser,
+        Action<SettingsPreview>? preview = null)
     {
         InitializeComponent();
         _store = store;
         _session = session;
         _api = api;
         _openBrowser = openBrowser;
+        _preview = preview;
 
         var s = store.Current;
         ClientIdBox.Text = s.ClientId;
         RedirectBox.Text = PkceAuth.RedirectUri;
         ShowMoodDockBox.IsChecked = s.ShowMoodDock;
+        AnimationsBox.IsChecked = s.Animations;
         CornerBox.ItemsSource = CornerLabels;
         CornerBox.DisplayMemberPath = "Value";
         CornerBox.SelectedValuePath = "Key";
         CornerBox.SelectedValue = s.Corner;
+        if (s.CardLeft is not null)
+        {
+            ResetPositionsButton.ToolTip = "Kart taşınmış bir konumda; köşe seçimi ancak sıfırlayınca geçerli olur.";
+        }
 
-        BindPercent(IdleOpacitySlider, IdleOpacityText, s.IdleOpacity);
-        BindPercent(ActiveOpacitySlider, ActiveOpacityText, s.ActiveOpacity);
+        BindPercent(IdleOpacitySlider, IdleOpacityText, s.IdleOpacity, showActive: false);
+        BindPercent(ActiveOpacitySlider, ActiveOpacityText, s.ActiveOpacity, showActive: true);
 
         // Playlists already chosen, so the boxes show them before the full list loads.
         _playlists = s.MoodPlaylists.Values.DistinctBy(p => p.Id).ToList();
         foreach (var mood in s.Moods)
         {
-            AddMoodRow(mood, s.MoodPlaylists.GetValueOrDefault(mood.Id));
+            AddMoodRow(mood, s.MoodPlaylists.GetValueOrDefault(mood.Id), animate: false);
         }
 
         BuildHotkeyRows(s);
         UpdateAuthUi();
+        NavList.SelectedIndex = _session.IsSignedIn ? 1 : 0;
 
-        Loaded += async (_, _) => await LoadPlaylistsAsync();
+        Loaded += async (_, _) =>
+        {
+            _ready = true;
+            await LoadPlaylistsAsync();
+        };
         Closed += (_, _) => _loginCts?.Cancel();
     }
 
-    private static void BindPercent(Slider slider, TextBlock label, double value)
+    protected override void OnSourceInitialized(EventArgs e)
     {
-        slider.ValueChanged += (_, _) => label.Text = $"%{slider.Value:0}";
-        slider.Value = Math.Round(value * 100);
-        label.Text = $"%{slider.Value:0}";
+        base.OnSourceInitialized(e);
+        WindowStyles.UseDarkTitleBar(new WindowInteropHelper(this).Handle);
     }
 
-    private void AddMoodRow(MoodDefinition mood, PlaylistRef? playlist)
+    // ---------- Navigation ----------
+
+    private void OnNavChanged(object sender, SelectionChangedEventArgs e)
     {
-        var grid = new Grid { Margin = new Thickness(0, 3, 0, 3) };
-        grid.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
-        grid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(140) });
-        grid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
-        grid.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
+        if (NavList.SelectedItem is not ListBoxItem { Tag: string name } || FindName(name) is not UIElement target)
+        {
+            return;
+        }
+
+        foreach (var section in new UIElement[] { SpotifySection, MoodsSection, LookSection, KeysSection })
+        {
+            section.Visibility = section == target ? Visibility.Visible : Visibility.Collapsed;
+        }
+
+        Scroller.ScrollToTop();
+        Anim.Enter(target, 8, 200);
+    }
+
+    private void ShowSection(UIElement section) =>
+        NavList.SelectedItem = NavList.Items.OfType<ListBoxItem>().First(i => (string)i.Tag == ((FrameworkElement)section).Name);
+
+    // ---------- Look + live preview ----------
+
+    private void BindPercent(Slider slider, TextBlock label, double value, bool showActive)
+    {
+        slider.Value = Math.Round(value * 100);
+        label.Text = $"%{slider.Value:0}";
+        slider.ValueChanged += (_, _) =>
+        {
+            label.Text = $"%{slider.Value:0}";
+            SendPreview(showActive);
+        };
+    }
+
+    private void OnPreviewChanged(object sender, RoutedEventArgs e) => SendPreview(showActive: false);
+
+    private void SendPreview(bool showActive)
+    {
+        if (!_ready || _preview is null)
+        {
+            return;
+        }
+
+        _preview(new SettingsPreview(
+            CornerBox.SelectedValue is ScreenCorner c ? c : ScreenCorner.BottomRight,
+            IdleOpacitySlider.Value / 100,
+            ActiveOpacitySlider.Value / 100,
+            AnimationsBox.IsChecked == true,
+            showActive));
+    }
+
+    private void OnResetPositions(object sender, RoutedEventArgs e)
+    {
+        _resetPositions = true;
+        ResetPositionsButton.Content = "Kaydedince sıfırlanacak ✓";
+        ResetPositionsButton.IsEnabled = false;
+    }
+
+    // ---------- Moods ----------
+
+    private void AddMoodRow(MoodDefinition mood, PlaylistRef? playlist, bool animate = true)
+    {
+        var grid = new Grid { Margin = new Thickness(0, 4, 0, 4) };
+        foreach (var width in new[] { GridLength.Auto, GridLength.Auto, new GridLength(150), new GridLength(1, GridUnitType.Star), GridLength.Auto })
+        {
+            grid.ColumnDefinitions.Add(new ColumnDefinition { Width = width });
+        }
+
+        var stripe = new Border { Width = 4, CornerRadius = new CornerRadius(2), Margin = new Thickness(0, 2, 10, 2), Background = MoodPalette.Brush(mood.Color) };
 
         // Color: a swatch dropdown of presets (plus the mood's own color if it isn't one of them).
         var colors = MoodPalette.Presets.Contains(mood.Color, StringComparer.OrdinalIgnoreCase)
@@ -102,36 +188,67 @@ public partial class SettingsWindow : Window
             : MoodPalette.Presets.Prepend(mood.Color).ToArray();
         var colorBox = new ComboBox
         {
-            Width = 56,
+            Width = 58,
             Margin = new Thickness(0, 0, 8, 0),
             ToolTip = "Renk",
             ItemTemplate = (DataTemplate)FindResource("SwatchTemplate"),
             ItemsSource = colors,
         };
         colorBox.SelectedIndex = Array.FindIndex(colors, c => string.Equals(c, mood.Color, StringComparison.OrdinalIgnoreCase));
+        colorBox.SelectionChanged += (_, _) => stripe.Background = MoodPalette.Brush(colorBox.SelectedItem as string);
 
-        var nameBox = new TextBox { Text = mood.Name, Margin = new Thickness(0, 0, 8, 0), VerticalContentAlignment = VerticalAlignment.Center, ToolTip = "İsim" };
+        var nameBox = new TextBox { Text = mood.Name, Margin = new Thickness(0, 0, 8, 0), ToolTip = "İsim" };
         var listBox = new ComboBox { DisplayMemberPath = nameof(PlaylistRef.Name), ItemsSource = _playlists, ToolTip = "Çalma listesi" };
         listBox.SelectedItem = playlist is null ? null : _playlists.FirstOrDefault(p => p.Id == playlist.Id);
 
-        var delete = new Button { Content = "Sil", Margin = new Thickness(8, 0, 0, 0), Padding = new Thickness(10, 3, 10, 3), ToolTip = "Bu ruh halini sil" };
+        var actions = new StackPanel { Orientation = Orientation.Horizontal, Margin = new Thickness(4, 0, 0, 0) };
+        var up = new Button { Content = "", Style = (Style)FindResource("SmallButton"), ToolTip = "Yukarı taşı" };
+        var down = new Button { Content = "", Style = (Style)FindResource("SmallButton"), ToolTip = "Aşağı taşı" };
+        var delete = new Button { Content = "", Style = (Style)FindResource("DangerButton"), ToolTip = "Bu ruh halini sil" };
+        actions.Children.Add(up);
+        actions.Children.Add(down);
+        actions.Children.Add(delete);
 
-        Grid.SetColumn(nameBox, 1);
-        Grid.SetColumn(listBox, 2);
-        Grid.SetColumn(delete, 3);
+        Grid.SetColumn(colorBox, 1);
+        Grid.SetColumn(nameBox, 2);
+        Grid.SetColumn(listBox, 3);
+        Grid.SetColumn(actions, 4);
+        grid.Children.Add(stripe);
         grid.Children.Add(colorBox);
         grid.Children.Add(nameBox);
         grid.Children.Add(listBox);
-        grid.Children.Add(delete);
+        grid.Children.Add(actions);
 
         var row = new MoodRow(mood.Id, grid, colorBox, nameBox, listBox);
+        up.Click += (_, _) => MoveMood(row, -1);
+        down.Click += (_, _) => MoveMood(row, +1);
         delete.Click += (_, _) =>
         {
             _moodRows.Remove(row);
-            MoodList.Children.Remove(grid);
+            Anim.Fade(grid, 0, 140, () => MoodList.Children.Remove(grid));
         };
         _moodRows.Add(row);
         MoodList.Children.Add(grid);
+        if (animate)
+        {
+            Anim.Enter(grid, 6, 200);
+        }
+    }
+
+    private void MoveMood(MoodRow row, int delta)
+    {
+        var index = _moodRows.IndexOf(row);
+        var target = index + delta;
+        if (index < 0 || target < 0 || target >= _moodRows.Count)
+        {
+            return;
+        }
+
+        _moodRows.RemoveAt(index);
+        _moodRows.Insert(target, row);
+        MoodList.Children.Remove(row.Root);
+        MoodList.Children.Insert(target, row.Root);
+        Anim.Enter(row.Root, delta * -6, 160, 0.4);
     }
 
     private void OnAddMood(object sender, RoutedEventArgs e)
@@ -144,12 +261,7 @@ public partial class SettingsWindow : Window
         added.SelectAll();
     }
 
-    private void OnResetPositions(object sender, RoutedEventArgs e)
-    {
-        _resetPositions = true;
-        AuthStatus.Text = "";
-        ((Button)sender).Content = "Kaydedince sıfırlanacak ✓";
-    }
+    // ---------- Hotkeys ----------
 
     private void BuildHotkeyRows(AppSettings s)
     {
@@ -157,35 +269,54 @@ public partial class SettingsWindow : Window
         foreach (var (action, label) in ActionLabels)
         {
             HotkeyGrid.RowDefinitions.Add(new RowDefinition());
-            var text = new TextBlock { Text = label, VerticalAlignment = VerticalAlignment.Center };
+            _hotkeyValues[action] = s.Hotkeys.GetValueOrDefault(action, "");
+            var text = new TextBlock { Text = label, VerticalAlignment = VerticalAlignment.Center, Margin = new Thickness(0, 0, 12, 0) };
             var box = new TextBox
             {
-                Margin = new Thickness(0, 3, 0, 3),
+                Margin = new Thickness(0, 4, 0, 4),
                 IsReadOnly = true,
                 IsReadOnlyCaretVisible = false,
-                Text = s.Hotkeys.GetValueOrDefault(action, ""),
+                Cursor = Cursors.Hand,
             };
+            ShowHotkey(action, box);
+
+            box.GotKeyboardFocus += (_, _) =>
+            {
+                box.Text = PressKeyText;
+                box.Foreground = (Brush)FindResource("AccentBrush");
+            };
+            box.LostKeyboardFocus += (_, _) => ShowHotkey(action, box);
             box.PreviewKeyDown += (_, e) =>
             {
-                e.Handled = true;
                 var key = e.Key == Key.System ? e.SystemKey : e.Key;
-                if (key is Key.Back or Key.Delete)
-                {
-                    box.Text = "";
-                    return;
-                }
-
                 if (key == Key.Tab)
                 {
-                    e.Handled = false;
-                    return;
+                    return; // keep keyboard navigation
                 }
 
-                if (HotkeyGesture.Format(Keyboard.Modifiers, key) is { } combo)
+                e.Handled = true;
+                switch (key)
                 {
-                    box.Text = combo;
+                    case Key.Escape:
+                        Keyboard.ClearFocus();
+                        return;
+                    case Key.Back or Key.Delete:
+                        _hotkeyValues[action] = "";
+                        break;
+                    default:
+                        if (HotkeyGesture.Format(Keyboard.Modifiers, key) is not { } combo)
+                        {
+                            return; // a lone modifier: keep waiting
+                        }
+
+                        _hotkeyValues[action] = combo;
+                        break;
                 }
+
+                Keyboard.ClearFocus();
+                ValidateHotkeys();
             };
+
             Grid.SetRow(text, row);
             Grid.SetRow(box, row);
             Grid.SetColumn(box, 1);
@@ -196,10 +327,72 @@ public partial class SettingsWindow : Window
         }
     }
 
-    private void UpdateAuthUi()
+    private void ShowHotkey(HotkeyAction action, TextBox box)
     {
-        ConnectButton.Content = _session.IsSignedIn ? "Bağlantıyı kes" : "Spotify'a bağlan";
-        AuthStatus.Text = _session.IsSignedIn ? "Bağlı ✓" : "Bağlı değil";
+        var value = _hotkeyValues[action];
+        box.Text = value.Length == 0 ? UnassignedText : value;
+        box.Foreground = (Brush)FindResource(value.Length == 0 ? "SubtleTextBrush" : "TextBrush");
+    }
+
+    /// <summary>Marks duplicate or invalid shortcuts in red. Returns an error message, or null.</summary>
+    private string? ValidateHotkeys()
+    {
+        var duplicates = _hotkeyValues
+            .Where(kv => kv.Value.Length > 0)
+            .GroupBy(kv => kv.Value, StringComparer.OrdinalIgnoreCase)
+            .Where(g => g.Count() > 1)
+            .SelectMany(g => g.Select(kv => kv.Key))
+            .ToHashSet();
+        var invalid = _hotkeyValues.Where(kv => kv.Value.Length > 0 && !HotkeyGesture.TryParse(kv.Value, out _)).Select(kv => kv.Key).ToHashSet();
+
+        foreach (var (action, box) in _hotkeyBoxes)
+        {
+            var bad = duplicates.Contains(action) || invalid.Contains(action);
+            box.BorderBrush = (Brush)FindResource(bad ? "DangerBrush" : "LineBrush");
+            box.ToolTip = duplicates.Contains(action) ? "Bu kısayol başka bir işleve de atanmış" : invalid.Contains(action) ? "Geçersiz kısayol" : null;
+        }
+
+        var message = duplicates.Count > 0 ? "Aynı kısayol birden fazla işleve atanmış (kırmızı kutular)."
+            : invalid.Count > 0 ? "Geçersiz kısayol var (kırmızı kutular)."
+            : null;
+        FooterStatus.Text = message ?? "";
+        return message;
+    }
+
+    // ---------- Spotify ----------
+
+    private void UpdateAuthUi(string? error = null)
+    {
+        var signedIn = _session.IsSignedIn;
+        ConnectButton.Content = signedIn ? "Bağlantıyı kes" : "Spotify'a bağlan";
+        ConnectButton.Style = (Style)FindResource(signedIn ? typeof(Button) : "PrimaryButton");
+
+        var (dot, text, bg) = error is not null
+            ? ("DangerBrush", "Sorun var", "#22F0616D")
+            : signedIn ? ("AccentBrush", "Bağlı", "#221ED760") : ("SubtleTextBrush", "Bağlı değil", "#22FFFFFF");
+        StatusDot.Fill = (Brush)FindResource(dot);
+        StatusText.Text = text;
+        StatusBadge.Background = new SolidColorBrush((Color)ColorConverter.ConvertFromString(bg));
+        AuthStatus.Text = error ?? (signedIn && !_session.HasScope("user-library-modify")
+            ? "♡ için bir kez bağlantıyı kesip tekrar bağlanın."
+            : "");
+        Anim.Enter(StatusBadge, 0, 180, 0.3);
+    }
+
+    private void OnOpenDashboard(object sender, RoutedEventArgs e) => _openBrowser(DashboardUrl);
+
+    private void OnCopyRedirect(object sender, RoutedEventArgs e)
+    {
+        Clipboard.SetText(PkceAuth.RedirectUri);
+        var button = (Button)sender;
+        button.Content = "Kopyalandı ✓";
+        var timer = new DispatcherTimer { Interval = TimeSpan.FromSeconds(1.5) };
+        timer.Tick += (_, _) =>
+        {
+            timer.Stop();
+            button.Content = "Kopyala";
+        };
+        timer.Start();
     }
 
     private async void OnConnect(object sender, RoutedEventArgs e)
@@ -214,7 +407,8 @@ public partial class SettingsWindow : Window
         var clientId = ClientIdBox.Text.Trim();
         if (clientId.Length == 0)
         {
-            AuthStatus.Text = "Önce Client ID girin.";
+            UpdateAuthUi("Önce Client ID girin.");
+            ClientIdBox.Focus();
             return;
         }
 
@@ -233,11 +427,11 @@ public partial class SettingsWindow : Window
         }
         catch (OperationCanceledException)
         {
-            AuthStatus.Text = "Giriş zaman aşımına uğradı.";
+            UpdateAuthUi("Giriş zaman aşımına uğradı.");
         }
         catch (Exception ex) when (ex is SpotifyAuthException or System.Net.HttpListenerException or HttpRequestException)
         {
-            AuthStatus.Text = ex.Message;
+            UpdateAuthUi(ex.Message);
         }
         finally
         {
@@ -270,32 +464,21 @@ public partial class SettingsWindow : Window
         }
         catch (SpotifyApiException ex)
         {
-            AuthStatus.Text = ex.Message;
+            UpdateAuthUi(ex.Message);
         }
         catch (HttpRequestException)
         {
-            AuthStatus.Text = "Spotify'a ulaşılamadı.";
+            UpdateAuthUi("Spotify'a ulaşılamadı.");
         }
     }
 
+    // ---------- Save / cancel ----------
+
     private void OnSave(object sender, RoutedEventArgs e)
     {
-        var hotkeys = new Dictionary<HotkeyAction, string>();
-        foreach (var (action, box) in _hotkeyBoxes)
+        if (ValidateHotkeys() is not null)
         {
-            if (box.Text.Length > 0 && !HotkeyGesture.TryParse(box.Text, out _))
-            {
-                MessageBox.Show(this, $"Geçersiz kısayol: {box.Text}", "Spotiwidget");
-                return;
-            }
-
-            hotkeys[action] = box.Text;
-        }
-
-        var duplicate = hotkeys.Values.Where(v => v.Length > 0).GroupBy(v => v, StringComparer.OrdinalIgnoreCase).FirstOrDefault(g => g.Count() > 1);
-        if (duplicate is not null)
-        {
-            MessageBox.Show(this, $"Aynı kısayol birden fazla işleve atanmış: {duplicate.Key}", "Spotiwidget");
+            ShowSection(KeysSection);
             return;
         }
 
@@ -306,7 +489,8 @@ public partial class SettingsWindow : Window
             var name = row.Name.Text.Trim();
             if (name.Length == 0)
             {
-                MessageBox.Show(this, "Her ruh halinin bir ismi olmalı.", "Spotiwidget");
+                FooterStatus.Text = "Her ruh halinin bir ismi olmalı.";
+                ShowSection(MoodsSection);
                 row.Name.Focus();
                 return;
             }
@@ -324,9 +508,10 @@ public partial class SettingsWindow : Window
             s.ClientId = ClientIdBox.Text.Trim();
             s.Corner = CornerBox.SelectedValue is ScreenCorner c ? c : ScreenCorner.BottomRight;
             s.ShowMoodDock = ShowMoodDockBox.IsChecked == true;
+            s.Animations = AnimationsBox.IsChecked == true;
             s.IdleOpacity = IdleOpacitySlider.Value / 100;
             s.ActiveOpacity = ActiveOpacitySlider.Value / 100;
-            s.Hotkeys = hotkeys;
+            s.Hotkeys = new Dictionary<HotkeyAction, string>(_hotkeyValues);
             s.Moods = moods;
             s.MoodPlaylists = playlists;
             if (s.FindMood(s.ActiveMood) is null)
@@ -340,9 +525,13 @@ public partial class SettingsWindow : Window
                 s.DockLeft = s.DockTop = null;
             }
         });
+        Saved = true;
         // Shown modeless (Show, not ShowDialog), so DialogResult can't be set; just close.
         Close();
     }
+
+    /// <summary>True when the window closed through Save (the caller can confirm it).</summary>
+    public bool Saved { get; private set; }
 
     private void OnCancel(object sender, RoutedEventArgs e) => Close();
 }

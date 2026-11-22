@@ -131,6 +131,7 @@ public sealed class AppController : IAsyncDisposable
     private void ApplySettings()
     {
         var s = _settings.Current;
+        UpdateAnimations(s.Animations);
         _card.Configure(
             new CardLayout(s.Corner, s.CardLeft, s.CardAnchor, s.CardAnchorBottom, s.ShowMoodDock, s.IdleOpacity, s.ActiveOpacity),
             s.Moods,
@@ -141,6 +142,25 @@ public sealed class AppController : IAsyncDisposable
         if (_moveMode)
         {
             SetMoveMode(true); // re-grab Esc after re-registering
+        }
+    }
+
+    /// <summary>Animations run only when the user wants them, Windows allows them and no fullscreen app is in front.</summary>
+    private void UpdateAnimations(bool wanted) =>
+        Anim.Enabled = wanted && !_fullscreen && SystemParameters.ClientAreaAnimation;
+
+    /// <summary>Settings window live preview: apply unsaved look values to the card.</summary>
+    private void OnSettingsPreview(SettingsPreview p)
+    {
+        var s = _settings.Current;
+        UpdateAnimations(p.Animations);
+        _card.Configure(
+            new CardLayout(p.Corner, s.CardLeft, s.CardAnchor, s.CardAnchorBottom, s.ShowMoodDock, p.IdleOpacity, p.ActiveOpacity),
+            s.Moods,
+            s.ActiveMood);
+        if (p.ShowActive)
+        {
+            _card.PreviewOpacity(p.ActiveOpacity);
         }
     }
 
@@ -346,6 +366,7 @@ public sealed class AppController : IAsyncDisposable
     private void OnForegroundChanged(ForegroundInfo info)
     {
         _fullscreen = info.IsFullscreen;
+        UpdateAnimations(_settings.Current.Animations);
         _card.SetFullscreen(_fullscreen);
         // Any focus change can push the card under a topmost game window; raise it right away.
         _card.KeepOnTop();
@@ -419,12 +440,17 @@ public sealed class AppController : IAsyncDisposable
 
         _card.Lock();
 
-        _settingsWindow = new SettingsWindow(_settings, _session, _api, OpenBrowser);
-        _settingsWindow.Closed += (_, _) =>
+        var window = new SettingsWindow(_settings, _session, _api, OpenBrowser, OnSettingsPreview);
+        _settingsWindow = window;
+        window.Closed += (_, _) =>
         {
             _settingsWindow = null;
-            ApplySettings();
+            ApplySettings(); // also undoes any unsaved preview
             _playback.RefreshSoon();
+            if (window.Saved)
+            {
+                ShowToast("Ayarlar kaydedildi ✓");
+            }
         };
         _settingsWindow.Show();
         _settingsWindow.Activate();

@@ -9,5 +9,70 @@
         <SolidColorBrush x:Key="TextBrush" Color="#FFF2F2F2" />
         <SolidColorBrush x:Key="SubtleTextBrush" Color="#FFA7A7A7" />
         <SolidColorBrush x:Key="AccentBrush" Color="#FF1ED760" />
+        <SolidColorBrush x:Key="SurfaceBrush" Color="#FF1E1E1E" />
+        <SolidColorBrush x:Key="Surface2Brush" Color="#FF262626" />
+        <SolidColorBrush x:Key="HoverBrush" Color="#FF303030" />
+        <SolidColorBrush x:Key="LineBrush" Color="#FF3A3A3A" />
+        <SolidColorBrush x:Key="DangerBrush" Color="#FFF0616D" />
+
+        <!-- Thin, flat slider (card volume, settings opacity). -->
+        <Style x:Key="SliderRepeat" TargetType="RepeatButton">
+            <Setter Property="Focusable" Value="False" />
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="RepeatButton">
+                        <Border Background="Transparent" />
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+        <Style x:Key="FlatSlider" TargetType="Slider">
+            <Setter Property="Cursor" Value="Hand" />
+            <Setter Property="IsMoveToPointEnabled" Value="True" />
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Slider">
+                        <Grid Height="18" Background="Transparent">
+                            <Border Height="4" CornerRadius="2" Background="#33FFFFFF" VerticalAlignment="Center" />
+                            <Track x:Name="PART_Track">
+                                <Track.DecreaseRepeatButton>
+                                    <RepeatButton Command="Slider.DecreaseLarge" Style="{StaticResource SliderRepeat}">
+                                        <RepeatButton.Template>
+                                            <ControlTemplate TargetType="RepeatButton">
+                                                <Grid Background="Transparent">
+                                                    <Border Height="4" CornerRadius="2" Background="White" VerticalAlignment="Center" />
+                                                </Grid>
+                                            </ControlTemplate>
+                                        </RepeatButton.Template>
+                                    </RepeatButton>
+                                </Track.DecreaseRepeatButton>
+                                <Track.IncreaseRepeatButton>
+                                    <RepeatButton Command="Slider.IncreaseLarge" Style="{StaticResource SliderRepeat}" />
+                                </Track.IncreaseRepeatButton>
+                                <Track.Thumb>
+                                    <Thumb>
+                                        <Thumb.Template>
+                                            <ControlTemplate TargetType="Thumb">
+                                                <!-- Thumb grows a little on hover. -->
+                                                <Ellipse x:Name="Knob" Width="12" Height="12" Fill="White" RenderTransformOrigin="0.5,0.5" />
+                                                <ControlTemplate.Triggers>
+                                                    <Trigger Property="IsMouseOver" Value="True">
+                                                        <Setter TargetName="Knob" Property="RenderTransform">
+                                                            <Setter.Value>
+                                                                <ScaleTransform ScaleX="1.25" ScaleY="1.25" />
+                                                            </Setter.Value>
+                                                        </Setter>
+                                                    </Trigger>
+                                                </ControlTemplate.Triggers>
+                                            </ControlTemplate>
+                                        </Thumb.Template>
+                                    </Thumb>
+                                </Track.Thumb>
+                            </Track>
+                        </Grid>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
     </Application.Resources>
 </Application>
