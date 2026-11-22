@@ -99,10 +99,14 @@
                 <StackPanel x:Name="Controls" Margin="0,8,0,0">
                 <Grid>
                     <StackPanel Orientation="Horizontal" HorizontalAlignment="Left">
+                        <Button x:Name="ShuffleButton" Style="{StaticResource IconButton}" Content="&#xE8B1;"
+                                Foreground="{Binding ShuffleBrush}" ToolTip="{Binding ShuffleTip}" Click="OnShuffle" />
                         <Button Style="{StaticResource IconButton}" Content="&#xE892;" ToolTip="Önceki" Click="OnPrevious" />
                         <Button Style="{StaticResource IconButton}" Content="{Binding PlayGlyph}" FontSize="16"
                                 ToolTip="Oynat / Duraklat" Click="OnPlayPause" />
                         <Button Style="{StaticResource IconButton}" Content="&#xE893;" ToolTip="Sonraki" Click="OnNext" />
+                        <Button x:Name="RepeatButton" Style="{StaticResource IconButton}" Content="{Binding RepeatGlyph}"
+                                Foreground="{Binding RepeatBrush}" ToolTip="{Binding RepeatTip}" Click="OnRepeat" />
                     </StackPanel>
                     <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
                         <Button x:Name="LikeButton" Style="{StaticResource IconButton}" Content="{Binding LikeGlyph}"

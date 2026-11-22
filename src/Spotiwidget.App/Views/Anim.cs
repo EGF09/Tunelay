@@ -11,10 +11,12 @@ namespace Spotiwidget.App.Views;
 /// </summary>
 public static class Anim
 {
-    private const int FrameRate = 60;
     private static readonly IEasingFunction EaseOut = Freeze(new CubicEase { EasingMode = EasingMode.EaseOut });
 
     public static bool Enabled { get; set; } = true;
+
+    /// <summary>Frames per second for new animations (30 in a game on the "light" level).</summary>
+    public static int FrameRate { get; set; } = 60;
 
     /// <summary>Animates <see cref="UIElement.Opacity"/> (or a window's) to <paramref name="to"/>.</summary>
     public static void Fade(UIElement element, double to, int ms = 180, Action? done = null)

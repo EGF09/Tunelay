@@ -34,6 +34,47 @@ public sealed partial class OverlayViewModel : ObservableObject
     [ObservableProperty]
     private bool? _isLiked;
 
+    [ObservableProperty]
+    private bool _isShuffle;
+
+    /// <summary>Accent green while shuffle is on.</summary>
+    public Brush ShuffleBrush => IsShuffle ? LikedBrush : Brushes.White;
+
+    public string ShuffleTip => IsShuffle ? "Karışık çalma: açık (kapatmak için tıklayın)" : "Karışık çalma: kapalı (açmak için tıklayın)";
+
+    partial void OnIsShuffleChanged(bool value)
+    {
+        OnPropertyChanged(nameof(ShuffleBrush));
+        OnPropertyChanged(nameof(ShuffleTip));
+    }
+
+    /// <summary>"off", "context" or "track".</summary>
+    [ObservableProperty]
+    private string _repeatState = RepeatMode.Off;
+
+    /// <summary>Repeat-one icon for a single song, repeat-all otherwise.</summary>
+    public string RepeatGlyph => RepeatState == RepeatMode.Track ? "" : "";
+
+    public Brush RepeatBrush => RepeatState == RepeatMode.Off ? Brushes.White : LikedBrush;
+
+    public string RepeatTip => RepeatState switch
+    {
+        RepeatMode.Context => "Tekrarlama: liste (tıklayınca: bu şarkı)",
+        RepeatMode.Track => "Tekrarlama: bu şarkı (tıklayınca: kapalı)",
+        _ => "Tekrarlama: kapalı (tıklayınca: liste)",
+    };
+
+    partial void OnRepeatStateChanged(string value)
+    {
+        OnPropertyChanged(nameof(RepeatGlyph));
+        OnPropertyChanged(nameof(RepeatBrush));
+        OnPropertyChanged(nameof(RepeatTip));
+    }
+
+    /// <summary>Spotify id of the current track; null when nothing plays. Changes only on a real song change.</summary>
+    [ObservableProperty]
+    private string? _trackId;
+
     public string PlayGlyph => IsPlaying ? "" : "";
 
     /// <summary>Filled heart when the track is in Liked Songs.</summary>
@@ -70,6 +111,7 @@ public sealed partial class OverlayViewModel : ObservableObject
     {
         if (!signedIn)
         {
+            TrackId = null;
             Title = "Spotify'a bağlı değil";
             Artist = "Tepsi simgesi → Ayarlar";
             ImageUrl = null;
@@ -80,18 +122,25 @@ public sealed partial class OverlayViewModel : ObservableObject
 
         if (state?.Item is not { } track)
         {
+            TrackId = null;
             Title = "Şu an bir şey çalmıyor";
             Artist = "Bir mod seçin veya Spotify'ı açın";
             ImageUrl = null;
             IsPlaying = false;
+            IsShuffle = state?.ShuffleState == true;
+            RepeatState = state?.RepeatState ?? RepeatMode.Off;
             Volume = state?.Device?.VolumePercent;
             return;
         }
 
+        // Text and art first, so the change notification for TrackId sees the new song.
         Title = track.Name;
         Artist = track.ArtistNames;
         ImageUrl = track.ImageUrl;
+        TrackId = track.Id;
         IsPlaying = state.IsPlaying;
+        IsShuffle = state.ShuffleState;
+        RepeatState = state.RepeatState ?? RepeatMode.Off;
         Volume = state.Device?.VolumePercent;
     }
 

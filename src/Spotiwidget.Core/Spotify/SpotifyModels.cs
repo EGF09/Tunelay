@@ -2,12 +2,29 @@ namespace Spotiwidget.Core.Spotify;
 
 // Shapes mirror the Spotify Web API (snake_case is mapped by the serializer options).
 
+/// <param name="RepeatState">Spotify's "off", "context" (repeat playlist) or "track".</param>
 public sealed record PlaybackState(
     bool IsPlaying,
     bool ShuffleState,
     int? ProgressMs,
     Device? Device,
-    Track? Item);
+    Track? Item,
+    string? RepeatState = null);
+
+public static class RepeatMode
+{
+    public const string Off = "off";
+    public const string Context = "context";
+    public const string Track = "track";
+
+    /// <summary>off → context → track → off, like Spotify's own button.</summary>
+    public static string Next(string? current) => current switch
+    {
+        Context => Track,
+        Track => Off,
+        _ => Context,
+    };
+}
 
 public sealed record Device(string? Id, string Name, bool IsActive, int? VolumePercent);
 

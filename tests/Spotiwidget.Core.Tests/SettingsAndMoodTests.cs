@@ -30,6 +30,7 @@ public class SettingsStoreTests
             s.ActiveMood = "Focused";
             s.CardLeft = -1500;
             s.IdleOpacity = 0.25;
+            s.GameAnimations = GameAnimationLevel.Off;
             s.Moods.Add(new MoodDefinition("rain", "Yağmurlu", "#336699"));
             s.MoodPlaylists["Focused"] = new PlaylistRef("p1", "Lo-fi");
             s.Hotkeys[HotkeyAction.Next] = "Ctrl+Shift+N";
@@ -44,6 +45,8 @@ public class SettingsStoreTests
         Assert.Equal("Focused", reloaded.ActiveMood);
         Assert.Equal(-1500, reloaded.CardLeft);
         Assert.Equal(0.25, reloaded.IdleOpacity);
+        Assert.Equal(GameAnimationLevel.Off, reloaded.GameAnimations);
+        Assert.Contains("\"GameAnimations\": \"Off\"", File.ReadAllText(path));
         Assert.Equal(new MoodDefinition("rain", "Yağmurlu", "#336699"), reloaded.Moods[^1]);
         Assert.Equal(6, reloaded.Moods.Count);
         Assert.Equal(new PlaylistRef("p1", "Lo-fi"), reloaded.MoodPlaylists["Focused"]);
@@ -63,6 +66,9 @@ public class SettingsStoreTests
         Assert.Equal("cid", loaded.ClientId);
         Assert.True(loaded.ShowMoodDock);
         Assert.True(loaded.Animations); // new setting defaults to on for older files
+        Assert.Equal(GameAnimationLevel.Light, loaded.GameAnimations);
+        Assert.Equal("Ctrl+Alt+K", loaded.Hotkeys[HotkeyAction.Shuffle]);
+        Assert.Equal("Ctrl+Alt+R", loaded.Hotkeys[HotkeyAction.Repeat]);
         Assert.Equal("Ctrl+Alt+L", loaded.Hotkeys[HotkeyAction.Like]);
     }
 
@@ -113,6 +119,8 @@ public class MoodServiceTests
         public Task SetVolumeAsync(int percent, CancellationToken ct = default) => Log($"vol {percent}");
 
         public Task SetShuffleAsync(bool on, CancellationToken ct = default) => Log($"shuffle {on}");
+
+        public Task SetRepeatAsync(string state, CancellationToken ct = default) => Log($"repeat {state}");
 
         public Task PlayContextAsync(string contextUri, CancellationToken ct = default) => Log($"ctx {contextUri}");
 

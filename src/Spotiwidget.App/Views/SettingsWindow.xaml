@@ -455,7 +455,27 @@
                             <CheckBox x:Name="ShowMoodDockBox" Content="Ruh hali düğmelerini masaüstünde göster" />
                             <CheckBox x:Name="AnimationsBox" Content="Animasyonlar" Margin="0,12,0,0" Click="OnPreviewChanged" />
                             <TextBlock Style="{StaticResource Hint}" Margin="50,4,0,0"
-                                       Text="Kısa geçişler; tam ekran oyunlarda ve Windows animasyonları kapalıyken otomatik kapanır." />
+                                       Text="Kısa geçişler (en fazla 250 ms, hiçbiri sürekli dönmez). Windows animasyonları kapalıyken de kapanır." />
+                            <Grid Margin="50,12,0,0" IsEnabled="{Binding IsChecked, ElementName=AnimationsBox}">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="150" />
+                                    <ColumnDefinition Width="*" />
+                                </Grid.ColumnDefinitions>
+                                <Grid.Style>
+                                    <Style TargetType="Grid">
+                                        <Style.Triggers>
+                                            <Trigger Property="IsEnabled" Value="False">
+                                                <Setter Property="Opacity" Value="0.45" />
+                                            </Trigger>
+                                        </Style.Triggers>
+                                    </Style>
+                                </Grid.Style>
+                                <TextBlock Style="{StaticResource Label}" Text="Oyunda animasyonlar" />
+                                <ComboBox x:Name="GameAnimationsBox" Grid.Column="1" Width="200" HorizontalAlignment="Left"
+                                          SelectionChanged="OnPreviewChanged" />
+                            </Grid>
+                            <TextBlock Style="{StaticResource Hint}" Margin="50,6,0,0"
+                                       Text="Tam ekran oyunlarda seçtiğiniz seviyede çalışır. Şarkı değişince kart birkaç saniye belirginleşir (animasyonlar kapalıyken de)." />
                         </StackPanel>
                     </Border>
                 </StackPanel>

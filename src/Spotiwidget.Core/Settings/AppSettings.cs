@@ -26,6 +26,23 @@ public enum HotkeyAction
 
     /// <summary>Toggles move mode: the card and the mood dock can be dragged anywhere.</summary>
     MoveMode,
+
+    Shuffle,
+
+    /// <summary>Cycles repeat: off → playlist → song.</summary>
+    Repeat,
+}
+
+/// <summary>How much animation runs while a fullscreen app (a game) is in front.</summary>
+public enum GameAnimationLevel
+{
+    Off,
+
+    /// <summary>All animations at 30 fps.</summary>
+    Light,
+
+    /// <summary>All animations at 60 fps, same as the desktop.</summary>
+    Full,
 }
 
 public sealed record PlaylistRef(string Id, string Name)
@@ -57,8 +74,11 @@ public sealed class AppSettings
     /// <summary>Card opacity while the interaction key has it unlocked, 0–1.</summary>
     public double ActiveOpacity { get; set; } = 1.0;
 
-    /// <summary>Short UI animations; always off while a fullscreen app is in front.</summary>
+    /// <summary>Short UI animations (master switch).</summary>
     public bool Animations { get; set; } = true;
+
+    /// <summary>Animation level while a fullscreen app is in front.</summary>
+    public GameAnimationLevel GameAnimations { get; set; } = GameAnimationLevel.Light;
 
     /// <summary>Shows the mood buttons as a widget pinned to the desktop (behind windows).</summary>
     public bool ShowMoodDock { get; set; } = true;
@@ -103,5 +123,7 @@ public sealed class AppSettings
         [HotkeyAction.CycleMood] = "Ctrl+Alt+M",
         [HotkeyAction.Borderless] = "Ctrl+Alt+B",
         [HotkeyAction.MoveMode] = "Ctrl+Alt+D",
+        [HotkeyAction.Shuffle] = "Ctrl+Alt+K",
+        [HotkeyAction.Repeat] = "Ctrl+Alt+R",
     };
 }

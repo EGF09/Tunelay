@@ -8,10 +8,11 @@ Masaüstüne sabitlenmiş mod düğmeleri, köşede sade bir şarkı kartı (ön
 
 - **Masaüstü ruh hali paneli** – Ruh hali düğmeleri masaüstünde, tüm pencerelerin arkasında durur. Ayarlardan kapatılabilir.
 - **Kendi ruh halleriniz** – Ayarlar → Ruh halleri: ekleyin, yeniden adlandırın, renk ve çalma listesi seçin, silin. Sıra panelde ve Ctrl+Alt+M geçişinde kullanılır. Düğmeye basınca liste karışık çalar.
-- **Şarkı kartı** – Kapak, şarkı, sanatçı, aktif ruh hali; ⏮ ⏯ ⏭, ♡ (Beğenilen Şarkılar'a ekle/çıkar), ＋ (aktif ruh halinin listesine ekle), ses kaydırıcısı. Odağı asla çalmaz (`WS_EX_NOACTIVATE`).
+- **Şarkı kartı** – Kapak, şarkı, sanatçı, aktif ruh hali; 🔀 karışık çalma, ⏮ ⏯ ⏭, 🔁 tekrarlama (kapalı / liste / şarkı), ♡ (Beğenilen Şarkılar'a ekle/çıkar), ＋ (aktif ruh halinin listesine ekle), ses kaydırıcısı. Odağı asla çalmaz (`WS_EX_NOACTIVATE`).
 - **Etkileşim modu** – Kart masaüstünde de oyunda da normalde şeffaf, sade ve tıklama geçirgendir. **Etkileşim tuşuna** basınca düğmeler açılır (oyunda ruh hali düğmeleri de karta gelir); Esc, tuşa tekrar basma, fare karttan çıkınca veya 4 sn hareketsizlikte kapanır. İki opaklık (boşta / etkileşimde) ayarlardan %0–100 seçilir.
 - **Taşıma modu** – **Ctrl+Alt+D** veya tepsi menüsü → *Taşıma modu*: kart ve panel kesikli çerçeveyle belirir, istediğiniz yere (başka monitör dahil) sürükleyin; Esc veya tekrar Ctrl+Alt+D ile bitirin. Konumlar kaydedilir; Ayarlar → *Köşeye geri al* ile sıfırlanır.
-- **Animasyonlar** – Şarkı değişimi, kartın açılması, ♡ "pop", bildirimler ve düğmeler için kısa (≤250 ms) geçişler. Yalnızca opaklık/kaydırma kullanılır, hiçbiri sürekli dönmez; tam ekran oyunda, Windows animasyonları kapalıyken veya Ayarlar → Görünüm → *Animasyonlar* kapalıyken devre dışıdır.
+- **Animasyonlar** – Şarkı değişimi, kartın açılması, ♡ "pop", bildirimler ve düğmeler için kısa (≤250 ms) geçişler. Yalnızca opaklık/kaydırma kullanılır, hiçbiri sürekli dönmez. Oyunda seviye Ayarlar → Görünüm → *Oyunda animasyonlar* ile seçilir: Kapalı · Hafif (30 fps, varsayılan) · Tam (60 fps). Windows animasyonları kapalıyken veya *Animasyonlar* anahtarı kapalıyken devre dışıdır.
+- **Şarkı değişimi vurgusu** – Yeni şarkı başlayınca kart ~3 sn etkileşim opaklığında belirginleşir, kapak/isim kayarak gelir, sonra soluklaşır; tıklamalar oyuna geçmeye devam eder. Oyunda da şarkı bitişi ~1 sn içinde fark edilir (yoklama şarkı sonuna göre zamanlanır).
 - **Ayarlar penceresi** – Koyu tema, sekmeler (Spotify · Ruh halleri · Görünüm · Kısayollar), opaklık ve köşe için kartta canlı önizleme, kısayol çakışmalarında satır içi uyarı, ruh hallerini oklarla sıralama.
 - **Tam ekran oyunlar** – Ön plandaki pencere monitörü kaplıyorsa kart her 2 sn'de en üste alınır ve Spotify yoklaması 3 sn → 15 sn'ye düşer.
 - **Genel kısayollar** (ayarlardan değiştirilebilir; tek başına F1–F24, Pause, Scroll Lock veya Insert de atanabilir):
@@ -22,6 +23,8 @@ Masaüstüne sabitlenmiş mod düğmeleri, köşede sade bir şarkı kartı (ön
   | Taşıma modu | Ctrl+Alt+D |
   | Beğen / vazgeç | Ctrl+Alt+L |
   | Oynat / duraklat | Ctrl+Alt+P |
+  | Karışık çalma aç / kapat | Ctrl+Alt+K |
+  | Tekrarlama (kapalı → liste → şarkı) | Ctrl+Alt+R |
   | Sonraki / önceki | Ctrl+Alt+→ / ← |
   | Ses ±10 | Ctrl+Alt+↑ / ↓ |
   | Çalan şarkıyı aktif mod listesine kaydet | Ctrl+Alt+S |

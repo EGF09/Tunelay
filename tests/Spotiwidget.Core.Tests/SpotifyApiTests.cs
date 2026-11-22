@@ -191,6 +191,39 @@ public class SpotifyApiHandlerTests
         Assert.Contains("tekrar bağlanın", ex.Message);
     }
 
+    [Theory]
+    [InlineData(null, "context")]
+    [InlineData("off", "context")]
+    [InlineData("context", "track")]
+    [InlineData("track", "off")]
+    public void Repeat_cycles_like_spotify(string? current, string expected)
+    {
+        Assert.Equal(expected, RepeatMode.Next(current));
+    }
+
+    [Fact]
+    public async Task Sets_repeat_state()
+    {
+        var (http, stub, _, _) = Build((_, _) => new HttpResponseMessage(HttpStatusCode.NoContent));
+
+        await new SpotifyClient(http).SetRepeatAsync(RepeatMode.Track);
+
+        var r = Assert.Single(stub.Requests);
+        Assert.Equal(HttpMethod.Put, r.Method);
+        Assert.Equal("/v1/me/player/repeat?state=track", r.RequestUri!.PathAndQuery);
+    }
+
+    [Fact]
+    public async Task Reads_repeat_state()
+    {
+        var (http, _, _, _) = Build((_, _) => TokenTests.Json("""{"is_playing":true,"shuffle_state":true,"repeat_state":"context","progress_ms":1,"device":null,"item":null}"""));
+
+        var state = await new SpotifyClient(http).GetPlaybackAsync();
+
+        Assert.Equal("context", state!.RepeatState);
+        Assert.True(state.ShuffleState);
+    }
+
     [Fact]
     public async Task Pages_through_playlists()
     {

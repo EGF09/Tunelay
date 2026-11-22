@@ -13,7 +13,13 @@ using Spotiwidget.Native;
 namespace Spotiwidget.App.Views;
 
 /// <summary>Unsaved look settings, sent while the user edits so the card can preview them.</summary>
-public sealed record SettingsPreview(ScreenCorner Corner, double IdleOpacity, double ActiveOpacity, bool Animations, bool ShowActive);
+public sealed record SettingsPreview(
+    ScreenCorner Corner,
+    double IdleOpacity,
+    double ActiveOpacity,
+    bool Animations,
+    GameAnimationLevel GameAnimations,
+    bool ShowActive);
 
 public partial class SettingsWindow : Window
 {
@@ -29,6 +35,8 @@ public partial class SettingsWindow : Window
         [HotkeyAction.Like] = "Beğen / beğenmekten vazgeç",
         [HotkeyAction.Next] = "Sonraki şarkı",
         [HotkeyAction.Previous] = "Önceki şarkı",
+        [HotkeyAction.Shuffle] = "Karışık çalmayı aç / kapat",
+        [HotkeyAction.Repeat] = "Tekrarlama (kapalı / liste / şarkı)",
         [HotkeyAction.VolumeUp] = "Sesi artır",
         [HotkeyAction.VolumeDown] = "Sesi azalt",
         [HotkeyAction.SaveToMood] = "Şarkıyı ruh hali listesine ekle",
@@ -42,6 +50,13 @@ public partial class SettingsWindow : Window
         [ScreenCorner.BottomLeft] = "Sol alt",
         [ScreenCorner.TopRight] = "Sağ üst",
         [ScreenCorner.TopLeft] = "Sol üst",
+    };
+
+    private static readonly Dictionary<GameAnimationLevel, string> GameAnimationLabels = new()
+    {
+        [GameAnimationLevel.Off] = "Kapalı",
+        [GameAnimationLevel.Light] = "Hafif (30 fps, önerilen)",
+        [GameAnimationLevel.Full] = "Tam (60 fps)",
     };
 
     private readonly SettingsStore _store;
@@ -75,6 +90,10 @@ public partial class SettingsWindow : Window
         RedirectBox.Text = PkceAuth.RedirectUri;
         ShowMoodDockBox.IsChecked = s.ShowMoodDock;
         AnimationsBox.IsChecked = s.Animations;
+        GameAnimationsBox.ItemsSource = GameAnimationLabels;
+        GameAnimationsBox.DisplayMemberPath = "Value";
+        GameAnimationsBox.SelectedValuePath = "Key";
+        GameAnimationsBox.SelectedValue = s.GameAnimations;
         CornerBox.ItemsSource = CornerLabels;
         CornerBox.DisplayMemberPath = "Value";
         CornerBox.SelectedValuePath = "Key";
@@ -160,8 +179,12 @@ public partial class SettingsWindow : Window
             IdleOpacitySlider.Value / 100,
             ActiveOpacitySlider.Value / 100,
             AnimationsBox.IsChecked == true,
+            SelectedGameAnimations(),
             showActive));
     }
+
+    private GameAnimationLevel SelectedGameAnimations() =>
+        GameAnimationsBox.SelectedValue is GameAnimationLevel level ? level : GameAnimationLevel.Light;
 
     private void OnResetPositions(object sender, RoutedEventArgs e)
     {
@@ -509,6 +532,7 @@ public partial class SettingsWindow : Window
             s.Corner = CornerBox.SelectedValue is ScreenCorner c ? c : ScreenCorner.BottomRight;
             s.ShowMoodDock = ShowMoodDockBox.IsChecked == true;
             s.Animations = AnimationsBox.IsChecked == true;
+            s.GameAnimations = SelectedGameAnimations();
             s.IdleOpacity = IdleOpacitySlider.Value / 100;
             s.ActiveOpacity = ActiveOpacitySlider.Value / 100;
             s.Hotkeys = new Dictionary<HotkeyAction, string>(_hotkeyValues);

@@ -20,6 +20,9 @@ public interface ISpotifyApi
 
     Task SetShuffleAsync(bool on, CancellationToken ct = default);
 
+    /// <summary>Sets repeat to <see cref="RepeatMode.Off"/>, <see cref="RepeatMode.Context"/> or <see cref="RepeatMode.Track"/>.</summary>
+    Task SetRepeatAsync(string state, CancellationToken ct = default);
+
     Task PlayContextAsync(string contextUri, CancellationToken ct = default);
 
     Task<IReadOnlyList<SimplePlaylist>> GetMyPlaylistsAsync(CancellationToken ct = default);
@@ -77,6 +80,9 @@ public sealed class SpotifyClient : ISpotifyApi
 
     public Task SetShuffleAsync(bool on, CancellationToken ct = default) =>
         Send(HttpMethod.Put, $"me/player/shuffle?state={(on ? "true" : "false")}", null, ct);
+
+    public Task SetRepeatAsync(string state, CancellationToken ct = default) =>
+        Send(HttpMethod.Put, $"me/player/repeat?state={Uri.EscapeDataString(state)}", null, ct);
 
     public Task PlayContextAsync(string contextUri, CancellationToken ct = default) =>
         WithDeviceFallbackAsync(id => Send(HttpMethod.Put, "me/player/play" + DeviceQuery(id), new { context_uri = contextUri }, ct), ct);

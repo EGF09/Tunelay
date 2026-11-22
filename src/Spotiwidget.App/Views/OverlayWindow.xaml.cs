@@ -15,6 +15,8 @@ public enum CardCommand
     Next,
     Like,
     AddToMood,
+    Shuffle,
+    Repeat,
 }
 
 /// <summary>Where and how the card is shown; built from <see cref="AppSettings"/>.</summary>
@@ -44,6 +46,9 @@ public partial class OverlayWindow : Window
     private readonly DispatcherTimer _toastTimer;
     private readonly DispatcherTimer _topmostTimer;
     private DispatcherTimer? _previewTimer;
+    private readonly DispatcherTimer _highlightTimer = new() { Interval = TimeSpan.FromSeconds(3) };
+    private bool _highlighted; // new song: briefly shown at full (active) opacity while still click-through
+    private string? _lastTrackId;
     private nint _hwnd;
     private CardLayout _layout = new(ScreenCorner.BottomRight, null, null, true, true, 0.6, 1);
     private bool _fullscreen;
@@ -77,6 +82,12 @@ public partial class OverlayWindow : Window
             });
         };
         vm.PropertyChanged += OnViewModelChanged;
+        _highlightTimer.Tick += (_, _) =>
+        {
+            _highlightTimer.Stop();
+            _highlighted = false;
+            Apply(); // fades back to the idle opacity
+        };
 
         MouseEnter += (_, _) =>
         {
@@ -267,16 +278,50 @@ public partial class OverlayWindow : Window
     {
         switch (e.PropertyName)
         {
-            // New song: the track row fades and slides in.
-            case nameof(OverlayViewModel.Title) when IsVisible:
+            // New song: the track row slides in and the card stands out for a few seconds.
+            case nameof(OverlayViewModel.TrackId) when IsVisible:
                 Anim.Enter(TrackRow, 5, 240, 0.2);
+                OnTrackMaybeChanged();
                 break;
 
             // Liked: the heart pops.
             case nameof(OverlayViewModel.IsLiked) when _vm.IsLiked == true:
                 Anim.Pop(LikeButton);
                 break;
+
+            // Shuffle turned on/off: a smaller pop.
+            case nameof(OverlayViewModel.IsShuffle):
+                Anim.Pop(ShuffleButton, 1.2, 220);
+                break;
+
+            case nameof(OverlayViewModel.RepeatState):
+                Anim.Pop(RepeatButton, 1.2, 220);
+                break;
         }
+    }
+
+    /// <summary>
+    /// Highlights the card when a different song starts (not on the first track seen,
+    /// and not for "nothing playing" / "not signed in" placeholders).
+    /// </summary>
+    private void OnTrackMaybeChanged()
+    {
+        if (_vm.TrackId is not { } trackId)
+        {
+            return; // pause/stop: keep the last song so resuming it doesn't count as new
+        }
+
+        var previous = _lastTrackId;
+        _lastTrackId = trackId;
+        if (previous is null || trackId == previous || _unlocked || _moveMode)
+        {
+            return; // first song after start-up, same song, or the card is already in use
+        }
+
+        _highlighted = true;
+        Apply();
+        _highlightTimer.Stop();
+        _highlightTimer.Start();
     }
 
     private void Apply()
@@ -288,7 +333,8 @@ public partial class OverlayWindow : Window
             WindowStyles.SetClickThrough(_hwnd, passive);
         }
 
-        Anim.Fade(this, _moveMode ? 1 : passive ? _layout.IdleOpacity : _layout.ActiveOpacity, 200);
+        var idle = _highlighted ? Math.Max(_layout.IdleOpacity, _layout.ActiveOpacity) : _layout.IdleOpacity;
+        Anim.Fade(this, _moveMode ? 1 : passive ? idle : _layout.ActiveOpacity, _highlighted ? 220 : 400);
         Reveal(Controls, !passive);
         Controls.IsHitTestVisible = !_moveMode;
         MoveFrame.Visibility = _moveMode ? Visibility.Visible : Visibility.Collapsed;
@@ -379,6 +425,10 @@ public partial class OverlayWindow : Window
         // Dispatch after the slider has applied the click/drag position.
         Dispatcher.BeginInvoke(() => VolumeSet?.Invoke((int)Math.Round(VolumeSlider.Value)));
     }
+
+    private void OnShuffle(object sender, RoutedEventArgs e) => Raise(CardCommand.Shuffle);
+
+    private void OnRepeat(object sender, RoutedEventArgs e) => Raise(CardCommand.Repeat);
 
     private void OnPrevious(object sender, RoutedEventArgs e) => Raise(CardCommand.Previous);
 

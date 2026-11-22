@@ -115,6 +115,37 @@ public sealed class PlaybackService(ISpotifyApi api, Func<bool> isSignedIn) : IA
         }
     });
 
+    /// <summary>Turns shuffle on or off for the current playback.</summary>
+    public Task ToggleShuffleAsync() => RunAsync(async () =>
+    {
+        var on = Current?.ShuffleState != true;
+        await api.SetShuffleAsync(on).ConfigureAwait(false);
+        if (Current is { } c)
+        {
+            Publish(c with { ShuffleState = on });
+        }
+
+        Info?.Invoke(on ? "Karışık çalma açık" : "Karışık çalma kapalı");
+    });
+
+    /// <summary>Cycles repeat: off → playlist → song → off.</summary>
+    public Task CycleRepeatAsync() => RunAsync(async () =>
+    {
+        var next = RepeatMode.Next(Current?.RepeatState);
+        await api.SetRepeatAsync(next).ConfigureAwait(false);
+        if (Current is { } c)
+        {
+            Publish(c with { RepeatState = next });
+        }
+
+        Info?.Invoke(next switch
+        {
+            RepeatMode.Context => "Tekrarlama: liste",
+            RepeatMode.Track => "Tekrarlama: bu şarkı",
+            _ => "Tekrarlama kapalı",
+        });
+    });
+
     /// <summary>Adds the current track to Liked Songs, or removes it if it is already there.</summary>
     public Task ToggleLikeAsync() => RunAsync(async () =>
     {
@@ -191,13 +222,33 @@ public sealed class PlaybackService(ISpotifyApi api, Func<bool> isSignedIn) : IA
 
             try
             {
-                await _wake.WaitAsync(_mode == PollMode.Visible ? VisibleInterval : BackgroundInterval, ct).ConfigureAwait(false);
+                var interval = _mode == PollMode.Visible ? VisibleInterval : BackgroundInterval;
+                await _wake.WaitAsync(NextPollDelay(Current, interval), ct).ConfigureAwait(false);
             }
             catch (OperationCanceledException)
             {
                 return;
             }
         }
+    }
+
+    private static readonly TimeSpan MinPollDelay = TimeSpan.FromSeconds(1);
+    private static readonly TimeSpan SongEndSlack = TimeSpan.FromMilliseconds(500);
+
+    /// <summary>
+    /// Waits the normal interval, but wakes just after the current song should end, so a
+    /// new song is noticed within about a second even on the slow (in-game) 15 s interval.
+    /// </summary>
+    internal static TimeSpan NextPollDelay(PlaybackState? state, TimeSpan interval)
+    {
+        if (state is not { IsPlaying: true, Item: { } track, ProgressMs: { } progress })
+        {
+            return interval;
+        }
+
+        var untilEnd = TimeSpan.FromMilliseconds(Math.Max(0, track.DurationMs - progress)) + SongEndSlack;
+        var delay = untilEnd < interval ? untilEnd : interval;
+        return delay < MinPollDelay ? MinPollDelay : delay;
     }
 
     private async Task PollOnceAsync(CancellationToken ct)
@@ -252,7 +303,8 @@ public sealed class PlaybackService(ISpotifyApi api, Func<bool> isSignedIn) : IA
         a?.Item?.Id == b?.Item?.Id
         && a?.IsPlaying == b?.IsPlaying
         && a?.Device?.VolumePercent == b?.Device?.VolumePercent
-        && a?.ShuffleState == b?.ShuffleState;
+        && a?.ShuffleState == b?.ShuffleState
+        && a?.RepeatState == b?.RepeatState;
 
     public async ValueTask DisposeAsync()
     {

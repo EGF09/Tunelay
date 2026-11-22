@@ -145,15 +145,23 @@ public sealed class AppController : IAsyncDisposable
         }
     }
 
-    /// <summary>Animations run only when the user wants them, Windows allows them and no fullscreen app is in front.</summary>
-    private void UpdateAnimations(bool wanted) =>
-        Anim.Enabled = wanted && !_fullscreen && SystemParameters.ClientAreaAnimation;
+    /// <summary>
+    /// Animations run when the user wants them and Windows allows them. In a fullscreen app the
+    /// "in-game" level decides: off, light (30 fps) or full (60 fps).
+    /// </summary>
+    private void UpdateAnimations(bool wanted, GameAnimationLevel? gameLevel = null)
+    {
+        var level = gameLevel ?? _settings.Current.GameAnimations;
+        var allowed = wanted && SystemParameters.ClientAreaAnimation;
+        Anim.Enabled = allowed && (!_fullscreen || level != GameAnimationLevel.Off);
+        Anim.FrameRate = _fullscreen && level == GameAnimationLevel.Light ? 30 : 60;
+    }
 
     /// <summary>Settings window live preview: apply unsaved look values to the card.</summary>
     private void OnSettingsPreview(SettingsPreview p)
     {
         var s = _settings.Current;
-        UpdateAnimations(p.Animations);
+        UpdateAnimations(p.Animations, p.GameAnimations);
         _card.Configure(
             new CardLayout(p.Corner, s.CardLeft, s.CardAnchor, s.CardAnchorBottom, s.ShowMoodDock, p.IdleOpacity, p.ActiveOpacity),
             s.Moods,
@@ -291,6 +299,12 @@ public sealed class AppController : IAsyncDisposable
             case HotkeyAction.MoveMode:
                 SetMoveMode(!_moveMode);
                 break;
+            case HotkeyAction.Shuffle:
+                _ = _playback.ToggleShuffleAsync();
+                break;
+            case HotkeyAction.Repeat:
+                _ = _playback.CycleRepeatAsync();
+                break;
         }
     }
 
@@ -349,6 +363,12 @@ public sealed class AppController : IAsyncDisposable
                 break;
             case CardCommand.Like:
                 _ = _playback.ToggleLikeAsync();
+                break;
+            case CardCommand.Shuffle:
+                _ = _playback.ToggleShuffleAsync();
+                break;
+            case CardCommand.Repeat:
+                _ = _playback.CycleRepeatAsync();
                 break;
             case CardCommand.AddToMood:
                 _ = RunMoodAsync(() => _moods.SaveTrackToActiveAsync(_playback.Current?.Item));
