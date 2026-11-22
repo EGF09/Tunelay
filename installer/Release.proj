@@ -1,0 +1,79 @@
+<!--
+  Builds the Tunelay setup from committed sources:
+
+    dotnet msbuild installer/Release.proj "-p:Iscc=C:\path\to\ISCC.exe"
+
+  Needs the .NET 10 SDK and Inno Setup 6.7 or later. Output: artifacts\release\<version>\
+-->
+<Project DefaultTargets="Setup">
+  <PropertyGroup>
+    <Version Condition="'$(Version)' == ''">0.1.0-beta.1</Version>
+    <FileVersion Condition="'$(FileVersion)' == ''">0.1.0.1</FileVersion>
+    <Root>$([System.IO.Path]::GetFullPath('$(MSBuildProjectDirectory)\..'))</Root>
+    <Assets>$(Root)\src\Tunelay.App\Assets</Assets>
+    <Stage>$(Root)\artifacts\build\$(Version)-$([System.DateTime]::Now.ToString('yyyyMMdd-HHmmss'))</Stage>
+    <ReleaseDir>$(Root)\artifacts\release\$(Version)</ReleaseDir>
+    <SetupName>Tunelay-Setup-$(Version)-x64.exe</SetupName>
+    <DotnetDir>$([System.IO.Path]::GetDirectoryName('$(DOTNET_HOST_PATH)'))</DotnetDir>
+    <Packages>$(NUGET_PACKAGES)</Packages>
+    <Packages Condition="'$(Packages)' == ''">$(UserProfile)\.nuget\packages</Packages>
+  </PropertyGroup>
+
+  <Target Name="Setup">
+    <Error Condition="!Exists('$(Iscc)')" Text="Pass the Inno Setup compiler: -p:Iscc=path\to\ISCC.exe" />
+
+    <!-- The commit in the exe's version must be what was really built. -->
+    <Exec Command="git -C &quot;$(Root)&quot; status --porcelain -- src" ConsoleToMSBuild="true" StandardOutputImportance="low">
+      <Output TaskParameter="ConsoleOutput" PropertyName="Dirty" />
+    </Exec>
+    <Error Condition="'$(Dirty)' != ''" Text="src has uncommitted changes. Commit them before building a release." />
+    <Exec Command="git -C &quot;$(Root)&quot; rev-parse --short=7 HEAD" ConsoleToMSBuild="true" StandardOutputImportance="low">
+      <Output TaskParameter="ConsoleOutput" PropertyName="Commit" />
+    </Exec>
+
+    <MakeDir Directories="$(Stage)\licenses;$(ReleaseDir)" />
+
+    <!-- No debug info and mapped paths, so the builder's user name and folders stay out of the exe. -->
+    <Exec Command="dotnet publish &quot;$(Root)\src\Tunelay.App&quot; -p:PublishProfile=Tunelay &quot;-p:PublishDir=$(Stage)/app/&quot; -p:Version=$(Version) -p:FileVersion=$(FileVersion) -p:SourceRevisionId=$(Commit) -p:DebugType=none -p:DebugSymbols=false &quot;-p:PathMap=$(Root)=Tunelay&quot;" />
+
+    <!-- Inno Setup reads a text file as UTF-8 only with a BOM, which Encoding="UTF-8" writes. -->
+    <PropertyGroup>
+      <Agreement>$([System.IO.File]::ReadAllText('$(MSBuildProjectDirectory)\SOZLESME.txt'))</Agreement>
+      <Privacy>$([System.IO.File]::ReadAllText('$(MSBuildProjectDirectory)\GIZLILIK.txt'))</Privacy>
+    </PropertyGroup>
+    <WriteLinesToFile File="$(Stage)\SOZLESME.txt" Lines="$([MSBuild]::Escape($(Agreement)))" Encoding="UTF-8" Overwrite="true" />
+    <WriteLinesToFile File="$(Stage)\GIZLILIK.txt" Lines="$([MSBuild]::Escape($(Privacy)))" Encoding="UTF-8" Overwrite="true" />
+    <Copy SourceFiles="$(Assets)\Tunelay.ico;$(Assets)\Tunelay.png" DestinationFolder="$(Stage)" />
+
+    <!-- The exe carries the .NET runtime and the packages, so their licenses ship with it. -->
+    <XmlPeek XmlInputPath="$(Root)\src\Tunelay.App\Tunelay.App.csproj" Query="//PackageReference[@Include='CommunityToolkit.Mvvm']/@Version">
+      <Output TaskParameter="Result" PropertyName="ToolkitVersion" />
+    </XmlPeek>
+    <ItemGroup>
+      <OwnLicense Include="$(MSBuildProjectDirectory)\licenses\*" />
+    </ItemGroup>
+    <Copy SourceFiles="@(OwnLicense)" DestinationFolder="$(Stage)\licenses" />
+    <Copy SourceFiles="$(DotnetDir)\LICENSE.txt" DestinationFiles="$(Stage)\licenses\dotnet-LICENSE.txt" />
+    <Copy SourceFiles="$(DotnetDir)\ThirdPartyNotices.txt" DestinationFiles="$(Stage)\licenses\dotnet-ThirdPartyNotices.txt" />
+    <Copy SourceFiles="$(Packages)\communitytoolkit.mvvm\$(ToolkitVersion)\License.md" DestinationFiles="$(Stage)\licenses\CommunityToolkit-LICENSE.md" />
+    <Copy SourceFiles="$(Packages)\communitytoolkit.mvvm\$(ToolkitVersion)\ThirdPartyNotices.txt" DestinationFiles="$(Stage)\licenses\CommunityToolkit-ThirdPartyNotices.txt" />
+
+    <Exec Command="&quot;$(Iscc)&quot; /Qp &quot;/DAppVersion=$(Version)&quot; &quot;/DFileVersion=$(FileVersion)&quot; &quot;/DSource=$(Stage)&quot; &quot;/DOutput=$(ReleaseDir)&quot; &quot;$(MSBuildProjectDirectory)\Tunelay.iss&quot;" />
+
+    <GetFileHash Files="$(ReleaseDir)\$(SetupName)" Algorithm="SHA256" HashEncoding="hex">
+      <Output TaskParameter="Hash" PropertyName="SetupHash" />
+    </GetFileHash>
+    <PropertyGroup>
+      <SetupHash>$(SetupHash.ToLowerInvariant())</SetupHash>
+      <Notes>$([System.IO.File]::ReadAllText('$(MSBuildProjectDirectory)\SURUM-NOTLARI.md'))</Notes>
+      <Notes>$(Notes.Replace('{SHA256}', '$(SetupHash)').Replace('{VERSION}', '$(Version)'))</Notes>
+    </PropertyGroup>
+    <!-- The LF and comment keep Windows' final CR away from the file name, so "sha256sum -c" can read it. -->
+    <WriteLinesToFile File="$(ReleaseDir)\SHA256SUMS.txt" Lines="$(SetupHash) *$(SetupName)%0A# SHA-256" Overwrite="true" />
+    <WriteLinesToFile File="$(ReleaseDir)\SURUM-NOTLARI.md" Lines="$([MSBuild]::Escape($(Notes)))" Overwrite="true" />
+
+    <Message Importance="high" Text="Setup: $(ReleaseDir)\$(SetupName)" />
+    <Message Importance="high" Text="SHA256: $(SetupHash)" />
+    <Message Importance="high" Text="Commit: $(Commit)" />
+  </Target>
+</Project>

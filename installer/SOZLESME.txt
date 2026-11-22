@@ -1,0 +1,37 @@
+TUNELAY BETA SON KULLANICI LİSANS SÖZLEŞMESİ
+Son güncelleme: 22 Kasım 2026
+
+Tunelay'i kurarak veya kullanarak bu sözleşmeyi ve bir sonraki sayfada gösterilen Gizlilik Metni'ni kabul edersiniz. Verilerinizin işlenmesi Gizlilik Metni'ne tabidir.
+
+1. Taraflar ve lisans
+Tunelay, GitHub'da EGF09 adıyla yer alan geliştirici ("Geliştirici") tarafından sunulur. Size kişisel, ticari olmayan, devredilemez ve ücretsiz bir kullanım hakkı verilir.
+
+2. Beta sürüm
+Bu bir deneme sürümüdür. Hata içerebilir, değişebilir veya sona erebilir.
+
+3. Spotify
+Tunelay bağımsız bir uygulamadır. Spotify tarafından yapılmamış, onaylanmamış veya desteklenmemiştir. Spotify adı, logosu ve içeriği Spotify AB'ye ve ilgili hak sahiplerine aittir. Spotify'ı kullanımınız ayrıca Spotify'ın kendi koşullarına tabidir.
+
+4. Yasaklar
+a) Tunelay'i, Spotify Platform'u, Spotify Service'i veya Spotify Content'i değiştiremez, bunlardan türev çalışma üretemezsiniz.
+b) Tunelay'i, Spotify Platform'u, Spotify Service'i veya Spotify Content'i, yasanın izin verdiği en geniş ölçüde, kaynak koda dönüştüremez, tersine mühendislik uygulayamaz veya parçalarına ayıramazsınız.
+c) Tunelay'i satamaz, ticari amaçla kullanamaz veya kendi ürününüz gibi sunamazsınız.
+Bu madde, üçüncü taraf açık kaynak bileşenlerin kendi lisanslarının size verdiği hakları kısıtlamaz.
+
+5. Spotify adına garanti verilmemesi
+Geliştirici, Spotify adına hiçbir beyanda bulunmaz ve garanti vermez. Spotify Platform, Spotify Service ve Spotify Content ile ilgili olarak satılabilirlik, belirli bir amaca uygunluk ve ihlal etmeme dahil bütün zımni garantiler açıkça reddedilir.
+
+6. Sorumluluk
+Tunelay'den yalnızca Geliştirici sorumludur. Spotify dahil üçüncü tarafların hiçbir sorumluluğu yoktur. Tunelay "olduğu gibi" sunulur. Geliştirici, yasanın izin verdiği en geniş ölçüde, doğrudan veya dolaylı zararlardan sorumlu değildir. Yasadan doğan vazgeçilemez tüketici haklarınız saklıdır.
+
+7. Oyunlar
+Tunelay hiçbir anti-cheat sistemiyle test edilmemiştir. Oyun hesabınıza gelebilecek yaptırımlar dahil, oyunlarla birlikte kullanım riski size aittir. Ctrl+Alt+B oyunun penceresini değiştirir. Rekabetçi veya anti-cheat kullanan oyunlarda kullanmayın.
+
+8. Üçüncü taraf lehtar
+Spotify, bu sözleşmenin ve Gizlilik Metni'nin üçüncü taraf lehtarıdır ve bunları doğrudan uygulatma hakkına sahiptir.
+
+9. Sona erme
+Uygulamayı kaldırarak sözleşmeyi dilediğiniz an sona erdirebilirsiniz. Sözleşmeye uymazsanız kullanım hakkınız sona erer. Bu durumda Spotify verilerini Bağlantıyı kes ile veya kaldırma sırasında silin.
+
+10. İletişim
+https://github.com/EGF09

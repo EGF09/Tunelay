@@ -1,0 +1,44 @@
+TUNELAY GİZLİLİK METNİ
+Son güncelleme: 22 Kasım 2026
+İletişim: https://github.com/EGF09
+
+ÖZET
+Tunelay'in sunucusu, telemetrisi veya reklamı yoktur. Verileriniz bilgisayarınızda kalır. Geliştiriciye gönderilmez, satılmaz, reklam ağlarıyla veya veri aracılarıyla paylaşılmaz.
+
+HESAP BAĞLAMADAN
+Windows üzerinden yalnızca Spotify'ın çaldığı şarkının adı, sanatçısı, kapağı, çalma durumu ve ses düzeyi okunur. Amaç kartta göstermek ve kontrol etmektir.
+
+HESAP BAĞLARSANIZ
+Bağlamak isteğe bağlıdır. Spotify'dan şunlara erişilir:
+- Çalma durumu ve cihazlarınız: göstermek ve kontrol etmek için.
+- Çalma listeleriniz: ruh hallerine liste seçmeniz ve şarkı eklemeniz için.
+- Çalan şarkının beğenilip beğenilmediği: beğenme düğmesi için.
+- Kullanıcı kimliğiniz: bir listenin size ait olup olmadığını anlamak için. Saklanmaz.
+Oynatma, beğenilenler ve listeler yalnızca sizin komutunuzla değiştirilir.
+
+BİLGİSAYARINIZDA SAKLANANLAR
+- %AppData%\Tunelay\tokens.bin: oturum anahtarları, Windows DPAPI ile şifreli.
+- %AppData%\Tunelay\settings.json: ayarlar, Client ID, ruh halleri, seçtiğiniz listelerin kimliği ve adı.
+- %TEMP%\Tunelay-art: hesapsız modda geçerli şarkının kapağı.
+- HKCU\Software\Microsoft\Windows\CurrentVersion\Run: yalnızca "Windows ile başlat"ı açarsanız.
+Uygulamanın eski sürümünü (Spotiwidget) kullandıysanız %AppData%\Spotiwidget içindeki ayar ve oturum ilk açılışta kopyalanır.
+
+OYUNLAR VE DİĞER PENCERELER
+Tam ekranı algılamak için öndeki pencerenin boyutu ve sınıfı okunur. Kaydedilmez, gönderilmez. Ekran görüntüsü alınmaz, oyun belleği okunmaz, yazdıklarınız izlenmez.
+
+BAĞLANILAN ADRESLER
+Yalnızca Spotify'ın hizmetlerine bağlanılır: accounts.spotify.com, api.spotify.com ve kapak görseli sunucuları. Spotify bu sırada IP adresiniz gibi bağlantı bilgilerini kendi gizlilik politikasına göre işler:
+https://www.spotify.com/legal/privacy-policy/
+
+ÇEREZLER
+Tunelay çerez koymaz ve üçüncü tarafların uygulama içinde çerez koymasına aracılık etmez. Spotify'a giriş kendi tarayıcınızda yapılır. Spotify orada çerez kullanabilir. Çerezleri tarayıcınızın ayarlarından yönetebilir veya silebilirsiniz. Windows, indirilen kapakları geçici internet önbelleğinde tutabilir.
+
+BAĞLANTIYI KESME VE SİLME
+1. Tepsideki Tunelay simgesine sağ tıklayın, Ayarlar > Spotify > Bağlantıyı kes'i seçin. Oturum anahtarları ve liste eşlemeleri hemen silinir.
+2. Spotify tarafındaki izni kaldırmak için https://www.spotify.com/account/apps/ adresini kullanın.
+3. Uygulamayı kaldırırken ayarların ve Spotify verilerinin de silinip silinmeyeceği sorulur.
+
+DEĞİŞİKLİKLER
+Bu metin değişirse güncel hâli yeni sürümün kurulumunda gösterilir.
+
+Spotify, bu Gizlilik Metni'nin üçüncü taraf lehtarıdır ve bunu doğrudan uygulatma hakkına sahiptir.

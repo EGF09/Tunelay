@@ -49,6 +49,12 @@ Hepsi Ayarlar'dan değiştirilebilir.
 
 Gerekenler: Windows 10 2004 (19041) veya üzeri 64 bit ve Spotify masaüstü uygulaması. Derlemek için .NET 10 SDK.
 
+Kullanıcılar için kurulum dosyası (`artifacts\release\<sürüm>\`, [Inno Setup](https://jrsoftware.org/isinfo.php) 6.7 veya üzeri gerekir, `src` commit edilmiş olmalı):
+
+```powershell
+dotnet msbuild installer/Release.proj "-p:Iscc=C:\yol\ISCC.exe"
+```
+
 Tek dosyalık exe üretmek için (çıktı `publish\Tunelay.exe`, .NET kurulumu istemez, önce açık Tunelay'den çıkın):
 
 ```powershell
@@ -113,8 +119,9 @@ Uygulamanın eski adı Spotiwidget idi. İlk açılışta `%AppData%\Spotiwidget
 Tunelay şu an kişisel kullanım içindir. [Developer Policy](https://developer.spotify.com/policy), [Developer Terms](https://developer.spotify.com/terms) ve [tasarım kuralları](https://developer.spotify.com/documentation/design) 22 Kasım 2026'da gözden geçirildi. Aşağıdakiler hukuki görüş değildir.
 
 - [ ] **Client ID:** herkesin kendi kimliğini alması "uygulama başına tek kimlik" kuralıyla (Policy VII.2) çelişebilir. Tek kimlik ise geliştirme modunda 5 kişiyle sınırlı.
-- [ ] **Gizlilik metni:** kurulumdan veya girişten önce gösterilmeli ve bir iletişim adresi içermeli (Terms V.12).
-- [ ] **Kullanıcı sözleşmesi (EULA):** Terms V.11'deki beş zorunlu madde, Spotify'ın üçüncü taraf lehtar olması dahil.
+- [x] **Gizlilik metni:** kurulum sihirbazı kurmadan önce [GIZLILIK.txt](installer/GIZLILIK.txt) metnini gösterir (Terms V.12).
+- [x] **Kullanıcı sözleşmesi (EULA):** kurulumda kabul edilmesi gereken [SOZLESME.txt](installer/SOZLESME.txt), Terms V.11'deki beş zorunlu maddeyi içerir. Hukukçu incelemesinden geçmedi.
+- [ ] **Kod imzası:** kurulum imzasız, SmartScreen uyarı gösterir.
 - [ ] **Hesapsız mod:** Premium olmayanlara kontrol sunmanın Policy IV.1 ile ilişkisi Spotify'a sorulmalı.
 - [ ] **Temel deneyimi taklit:** Policy III.11 açısından Spotify'dan görüş alınmalı.
 - [ ] **Kapak animasyonu:** şarkı değişiminde kapak kayarak geliyor, tasarım kuralları kapağın canlandırılmamasını istiyor.

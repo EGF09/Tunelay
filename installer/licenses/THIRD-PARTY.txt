@@ -1,0 +1,23 @@
+Tunelay includes the following third-party components.
+
+.NET runtime and Windows Desktop runtime (Microsoft, .NET Foundation and contributors)
+  MIT and others: dotnet-LICENSE.txt, dotnet-ThirdPartyNotices.txt
+
+CommunityToolkit.Mvvm (.NET Foundation and contributors)
+  MIT: CommunityToolkit-LICENSE.md, CommunityToolkit-ThirdPartyNotices.txt
+
+H.NotifyIcon, H.NotifyIcon.Wpf, H.GeneratedIcons.System.Drawing (havendv)
+  MIT: H.NotifyIcon-LICENSE.txt
+
+C#/WinRT runtime, WinRT.Runtime.dll (Microsoft)
+  MIT: CsWinRT-LICENSE.txt
+
+Windows SDK .NET projection, Microsoft.Windows.SDK.NET.dll (Microsoft)
+  Windows SDK license terms: https://aka.ms/WinSDKLicenseURL
+
+Spotify logo and icon (Spotify AB)
+  Trademarks of Spotify AB, used unmodified for attribution under
+  https://developer.spotify.com/documentation/design
+
+The setup was made with Inno Setup, copyright (C) Jordan Russell and Martijn Laan.
+  https://jrsoftware.org/
