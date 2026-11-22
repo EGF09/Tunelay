@@ -1,4 +1,4 @@
-# Spotiwidget
+# Tunelay
 
 Masaüstü ve oyun içi Spotify atmosfer asistanı — **Faz 1 (çekirdek katman)**.
 
@@ -33,9 +33,9 @@ Masaüstüne sabitlenmiş mod düğmeleri, köşede sade bir şarkı kartı (ön
   | Oyunu kenarlıksız tam ekran yap / geri al | Ctrl+Alt+B |
 
 - **Beğenme izni** – ♡ için `user-library-read` / `user-library-modify` izinleri gerekir. Daha önce bağlandıysanız bir kez Ayarlar → Bağlantıyı kes → Spotify'a bağlan yapın.
-- **Güvenlik** – Token'lar Windows DPAPI ile şifrelenir (`%AppData%\Spotiwidget\tokens.bin`). Oyun süreçlerine DLL enjeksiyonu veya DirectX/Vulkan kancası yoktur; yalnızca `SetWinEventHook` (süreç dışı) ve `RegisterHotKey` kullanılır.
+- **Güvenlik** – Token'lar Windows DPAPI ile şifrelenir (`%AppData%\Tunelay\tokens.bin`). Oyun süreçlerine DLL enjeksiyonu veya DirectX/Vulkan kancası yoktur; yalnızca `SetWinEventHook` (süreç dışı) ve `RegisterHotKey` kullanılır.
 
-> **Not:** Kart, *kenarlıksız / pencereli tam ekran* oyunların üzerinde görünür. *Özel (exclusive) tam ekran* (ör. Minecraft'ta F11) üzerine hiçbir masaüstü penceresi çizilemez. Çözüm: oyunu pencere modunda açın, oyun penceresine tıklayın ve **Ctrl+Alt+B**'ye basın; pencere çerçevesiz olarak tüm ekranı kaplar ve kart üstünde görünür. Tekrar basınca eski hâline döner; Spotiwidget kapanırken de geri alınır. Oyuna hiçbir şey enjekte edilmez, yalnızca pencere stili ve boyutu değişir.
+> **Not:** Kart, *kenarlıksız / pencereli tam ekran* oyunların üzerinde görünür. *Özel (exclusive) tam ekran* (ör. Minecraft'ta F11) üzerine hiçbir masaüstü penceresi çizilemez. Çözüm: oyunu pencere modunda açın, oyun penceresine tıklayın ve **Ctrl+Alt+B**'ye basın; pencere çerçevesiz olarak tüm ekranı kaplar ve kart üstünde görünür. Tekrar basınca eski hâline döner; Tunelay kapanırken de geri alınır. Oyuna hiçbir şey enjekte edilmez, yalnızca pencere stili ve boyutu değişir.
 
 ## Kurulum
 
@@ -57,7 +57,7 @@ dotnet build
 ```
 
 ```powershell
-dotnet run --project src/Spotiwidget.App
+dotnet run --project src/Tunelay.App
 ```
 
 İlk açılışta ayarlar penceresi açılır: Client ID'yi yapıştırın → **Spotify'a bağlan** → tarayıcıda onaylayın → her moda bir çalma listesi seçin → **Kaydet**. Uygulama sistem tepsisinde (♪) çalışır; sağ tık menüsünden ayarlar, gizle/göster ve çıkış.
@@ -71,13 +71,15 @@ dotnet test
 ## Proje yapısı
 
 ```
-src/Spotiwidget.Core     Ayarlar (JSON), PKCE yetkilendirme, token yenileme, rate-limit korumalı API istemcisi, oynatma yoklaması, mod servisi
-src/Spotiwidget.Native   Win32: pencere stilleri, genel kısayollar, ön plan / tam ekran izleyici, DPAPI
-src/Spotiwidget.App      WPF: şarkı kartı, masaüstü mod paneli, ayarlar penceresi, tepsi simgesi
-tests/Spotiwidget.Core.Tests
+src/Tunelay.Core     Ayarlar (JSON), PKCE yetkilendirme, token yenileme, rate-limit korumalı API istemcisi, oynatma yoklaması, mod servisi
+src/Tunelay.Native   Win32: pencere stilleri, genel kısayollar, ön plan / tam ekran izleyici, DPAPI
+src/Tunelay.App      WPF: şarkı kartı, masaüstü mod paneli, ayarlar penceresi, tepsi simgesi
+tests/Tunelay.Core.Tests
 ```
 
-Ayarlar: `%AppData%\Spotiwidget\settings.json`
+Ayarlar: `%AppData%\Tunelay\settings.json`
+
+> Uygulamanın eski adı Spotiwidget idi. İlk açılışta `%AppData%\Spotiwidget` içindeki ayarlar ve oturum `%AppData%\Tunelay` klasörüne kopyalanır; eski klasör silinmez.
 
 ## Sonraki fazlar
 

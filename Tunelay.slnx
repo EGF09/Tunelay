@@ -1,0 +1,10 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/Tunelay.App/Tunelay.App.csproj" />
+    <Project Path="src/Tunelay.Core/Tunelay.Core.csproj" />
+    <Project Path="src/Tunelay.Native/Tunelay.Native.csproj" />
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/Tunelay.Core.Tests/Tunelay.Core.Tests.csproj" />
+  </Folder>
+</Solution>
