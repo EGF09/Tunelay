@@ -6,6 +6,20 @@ Windows için Spotify masaüstü ve oyun içi kontrol kartı. Spotify masaüstü
 
 Tunelay bağımsız bir projedir. Spotify tarafından yapılmamış, onaylanmamış veya desteklenmemiştir. Şarkı bilgisi ve kapaklar Spotify tarafından sağlanır. Spotify adı ve logosu Spotify AB'nin markalarıdır.
 
+## İndirme
+
+**[Tunelay 0.1.0-beta.1 kurulumunu indir](https://github.com/EGF09/Tunelay/releases/download/v0.1.0-beta.1/Tunelay-Setup-0.1.0-beta.1-x64.exe)** (66 MB) · [Sürüm notları ve SHA-256](https://github.com/EGF09/Tunelay/releases/tag/v0.1.0-beta.1) · [Tüm sürümler](https://github.com/EGF09/Tunelay/releases)
+
+> Bu bir beta sürümüdür, hata içerebilir.
+
+- **Gerekenler:** Windows 10 2004 (19041) veya üzeri 64 bit ve Spotify masaüstü uygulaması. .NET kurmanız ve yönetici izni vermeniz gerekmez.
+- **Hesap şart değil:** kurunca **Hemen kullan** deyin. Hesap bağlamak isteğe bağlıdır, [sınırları var](#hesap-bağlama).
+- **Windows uyarısı:** dosya dijital imzalı değil. SHA-256 özeti sürüm notlarındakiyle aynıysa **Ek bilgi → Yine de çalıştır** deyin. Özeti görmek için: `Get-FileHash .\Tunelay-Setup-0.1.0-beta.1-x64.exe`
+- **Oyunlar:** hiçbir anti-cheat ile test edilmedi, önce [uyarıları](#oyunlar-ve-anti-cheat) okuyun.
+- **Güncelleme ve kaldırma:** önce tepsiden Çıkış deyin. Yeni kurulumu eskisinin üzerine çalıştırın veya Windows Ayarları → Uygulamalar → Tunelay (Beta) → Kaldır.
+
+Kurulumda gösterilen metinler: [kullanıcı sözleşmesi](installer/SOZLESME.txt), [gizlilik metni](installer/GIZLILIK.txt).
+
 ## Hesapsız ve hesapla
 
 | | Hesapsız | Hesapla (Premium) |
@@ -45,11 +59,11 @@ Hepsi Ayarlar'dan değiştirilebilir.
 | Sonraki ruh hali | Ctrl+Alt+M |
 | Kenarlıksız tam ekran | Ctrl+Alt+B |
 
-## Kurulum
+## Kaynaktan derleme
 
-Gerekenler: Windows 10 2004 (19041) veya üzeri 64 bit ve Spotify masaüstü uygulaması. Derlemek için .NET 10 SDK.
+Yalnızca geliştirmek için gerekir, kullanmak için [kurulumu indirin](https://github.com/EGF09/Tunelay/releases/tag/v0.1.0-beta.1). Gereken: .NET 10 SDK.
 
-Kullanıcılar için kurulum dosyası (`artifacts\release\<sürüm>\`, [Inno Setup](https://jrsoftware.org/isinfo.php) 6.7 veya üzeri gerekir, `src` commit edilmiş olmalı):
+Kurulum dosyası üretmek için (`artifacts\release\<sürüm>\`, [Inno Setup](https://jrsoftware.org/isinfo.php) 6.7 veya üzeri gerekir, `src` commit edilmiş olmalı):
 
 ```powershell
 dotnet msbuild installer/Release.proj "-p:Iscc=C:\yol\ISCC.exe"
@@ -71,7 +85,7 @@ dotnet run --project src/Tunelay.App
 dotnet test
 ```
 
-### Hesap bağlama
+## Hesap bağlama
 
 İlk açılıştaki **Hesabımı bağla** veya Ayarlar → Spotify → **Hesap bağla…** üç adımlı sihirbazı açar:
 
@@ -103,9 +117,9 @@ Tunelay'in sunucusu, telemetrisi, reklamı ve çerezi yoktur. Geliştiriciye ver
 |---|---|---|---|
 | Erişim ve yenileme anahtarları | Oturum | `%AppData%\Tunelay\tokens.bin` (Windows DPAPI ile şifreli) | Bağlantıyı kesince |
 | Seçilen listelerin kimliği ve adı | Ruh halleri | `%AppData%\Tunelay\settings.json` | Bağlantıyı kesince |
-| Client ID, ruh halleri, kısayollar, görünüm | Ayarlar | `%AppData%\Tunelay\settings.json` | Klasörü siz silince |
+| Client ID, ruh halleri, kısayollar, görünüm | Ayarlar | `%AppData%\Tunelay\settings.json` | Kaldırırken silmeyi seçince veya klasörü siz silince |
 | Kapak görseli (hesapsız mod) | Kartta gösterim | `%TEMP%\Tunelay-art` | Yeni kapakta veya bağlantıyı kesince |
-| Başlangıç kaydı (açtıysanız) | Windows ile başlatma | `HKCU\Software\Microsoft\Windows\CurrentVersion\Run` | Anahtarı kapatınca |
+| Başlangıç kaydı (açtıysanız) | Windows ile başlatma | `HKCU\Software\Microsoft\Windows\CurrentVersion\Run` | Anahtarı kapatınca veya kurulu sürümü kaldırınca |
 
 - **Spotify'dan okunanlar:** çalma durumu ve cihazlar, çalma listeleriniz, çalan şarkının beğenilip beğenilmediği, listeye eklerken kullanıcı kimliğiniz (saklanmaz).
 - **Spotify'da değiştirilenler:** yalnızca sizin komutunuzla oynatma, Beğenilen Şarkılar ve seçtiğiniz liste.
@@ -114,9 +128,9 @@ Tunelay'in sunucusu, telemetrisi, reklamı ve çerezi yoktur. Geliştiriciye ver
 
 Uygulamanın eski adı Spotiwidget idi. İlk açılışta `%AppData%\Spotiwidget` içindeki ayarlar ve oturum kopyalanır. Bağlantıyı kesmek oradaki Spotify verisini de siler.
 
-## Dağıtımdan önce çözülmesi gerekenler
+## Beta'daki açık konular
 
-Tunelay şu an kişisel kullanım içindir. [Developer Policy](https://developer.spotify.com/policy), [Developer Terms](https://developer.spotify.com/terms) ve [tasarım kuralları](https://developer.spotify.com/documentation/design) 22 Kasım 2026'da gözden geçirildi. Aşağıdakiler hukuki görüş değildir.
+Tunelay ücretsiz ve ticari olmayan bir beta olarak dağıtılıyor. Spotify tarafından incelenmedi veya onaylanmadı. [Developer Policy](https://developer.spotify.com/policy), [Developer Terms](https://developer.spotify.com/terms) ve [tasarım kuralları](https://developer.spotify.com/documentation/design) 22 Kasım 2026'da gözden geçirildi. Aşağıdakiler hukuki görüş değildir.
 
 - [ ] **Client ID:** herkesin kendi kimliğini alması "uygulama başına tek kimlik" kuralıyla (Policy VII.2) çelişebilir. Tek kimlik ise geliştirme modunda 5 kişiyle sınırlı.
 - [x] **Gizlilik metni:** kurulum sihirbazı kurmadan önce [GIZLILIK.txt](installer/GIZLILIK.txt) metnini gösterir (Terms V.12).
@@ -159,4 +173,5 @@ src/Tunelay.Core     ayarlar, PKCE, API istemcisi, oynatma, ruh halleri, başlan
 src/Tunelay.Native   Win32, Windows medya oturumu, ses mikseri, DPAPI, kayıt defteri
 src/Tunelay.App      WPF: kart, panel, karşılama, ayarlar, tepsi
 tests/Tunelay.Core.Tests
+installer            kurulum sihirbazı, sözleşme, gizlilik, lisanslar
 ```
