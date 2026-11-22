@@ -25,9 +25,11 @@ public partial class WelcomeWindow : Window
     private bool _closed;
     private int _step; // 0 is the welcome page
 
-    public WelcomeWindow(SettingsStore store, SpotifyAuthSession session, ISpotifyApi api, Action<string> openBrowser, bool connect)
+    public WelcomeWindow(SettingsStore store, SpotifyAuthSession session, ISpotifyApi api, Action<string> openBrowser,
+        StartupSwitch startup, bool connect)
     {
         InitializeComponent();
+        StartupBox.Bind(this, StartupToggle, StartupHint, startup);
         _store = store;
         _session = session;
         _api = api;

@@ -10,8 +10,12 @@ public enum PollMode
 }
 
 /// <summary>Polls playback state and runs player commands. Events fire on a thread-pool thread.</summary>
-public sealed class PlaybackService(ISpotifyApi api, Func<bool> isSignedIn) : Playback.IPlaybackSource
+/// <param name="api">The Spotify Web API.</param>
+/// <param name="isSignedIn">Whether there is an account to poll for.</param>
+/// <param name="quietStart">Started with Windows: being offline isn't reported until Spotify has answered once.</param>
+public sealed class PlaybackService(ISpotifyApi api, Func<bool> isSignedIn, bool quietStart = false) : Playback.IPlaybackSource
 {
+    private bool _quiet = quietStart;
     public Playback.SourceCapabilities Capabilities { get; } = new(Account: true, Volume: true);
 
     private static readonly TimeSpan VisibleInterval = TimeSpan.FromSeconds(3);
@@ -288,6 +292,7 @@ public sealed class PlaybackService(ISpotifyApi api, Func<bool> isSignedIn) : Pl
         {
             var state = await api.GetPlaybackAsync(ct).ConfigureAwait(false);
             _lastError = null;
+            _quiet = false;
             if (!Equivalent(state, Current))
             {
                 Publish(state);
@@ -300,6 +305,10 @@ public sealed class PlaybackService(ISpotifyApi api, Func<bool> isSignedIn) : Pl
         catch (OperationCanceledException) when (ct.IsCancellationRequested)
         {
         }
+        catch (Exception ex) when (_quiet && IsOffline(ex))
+        {
+            // Windows often starts apps before the network is up; the loop just tries again.
+        }
         catch (Exception ex) when (SpotifyFailure.IsExpected(ex))
         {
             var message = SpotifyFailure.Describe(ex);
@@ -310,6 +319,10 @@ public sealed class PlaybackService(ISpotifyApi api, Func<bool> isSignedIn) : Pl
             }
         }
     }
+
+    private static bool IsOffline(Exception ex) =>
+        ex is HttpRequestException or TaskCanceledException
+        || ex is SpotifyApiException { Status: >= System.Net.HttpStatusCode.InternalServerError };
 
     private void Publish(PlaybackState? state)
     {

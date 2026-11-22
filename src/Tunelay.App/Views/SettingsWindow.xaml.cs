@@ -80,10 +80,12 @@ public partial class SettingsWindow : Window
 
     /// <param name="connect">Opens the connect wizard.</param>
     /// <param name="disconnect">Signs out and deletes the Spotify data; false when a file couldn't be cleaned.</param>
+    /// <param name="startup">The "start with Windows" switch; it applies without Kaydet.</param>
     public SettingsWindow(SettingsStore store, SpotifyAuthSession session, ISpotifyApi api, Action<string> openBrowser,
-        Action connect, Func<Task<bool>> disconnect, Action<SettingsPreview>? preview = null)
+        Action connect, Func<Task<bool>> disconnect, StartupSwitch startup, Action<SettingsPreview>? preview = null)
     {
         InitializeComponent();
+        StartupBox.Bind(this, StartupToggle, StartupHint, startup);
         _store = store;
         _session = session;
         _api = api;

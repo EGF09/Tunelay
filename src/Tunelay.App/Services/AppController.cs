@@ -47,9 +47,17 @@ public sealed class AppController : IAsyncDisposable
     private bool _moveMode;
     private bool _quietSave; // position-only saves don't need a full re-apply
 
-    public AppController(Application app)
+    private readonly bool _background;
+    private readonly StartupSwitch _startup;
+    private MenuItem? _startupItem;
+
+    /// <param name="app">The running application.</param>
+    /// <param name="background">Started with Windows: open no window and stay quiet while offline.</param>
+    public AppController(Application app, bool background = false)
     {
         _app = app;
+        _background = background;
+        _startup = new StartupSwitch(new StartupRegistration(), Environment.ProcessPath ?? "");
         _appData = Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData);
         var dir = AppInfo.ResolveDataDirectory(_appData);
         _settings = new SettingsStore(Path.Combine(dir, "settings.json"));
@@ -65,7 +73,7 @@ public sealed class AppController : IAsyncDisposable
         _starter = new SpotifyStarter(launcher);
         _api = new SpotifyClient(new HttpClient(handler) { BaseAddress = SpotifyClient.BaseAddress, Timeout = TimeSpan.FromSeconds(15) }, _starter);
         _local = new WindowsMediaSource(launcher, () => !_session.IsSignedIn);
-        _playback = new PlaybackRouter(new PlaybackService(_api, () => _session.IsSignedIn), _local, () => _session.IsSignedIn);
+        _playback = new PlaybackRouter(new PlaybackService(_api, () => _session.IsSignedIn, background), _local, () => _session.IsSignedIn);
         _moods = new MoodService(_api, _settings);
 
         _card = new OverlayWindow(_vm);
@@ -136,6 +144,11 @@ public sealed class AppController : IAsyncDisposable
         _foreground.Refresh();
         _playback.Start();
 
+        if (_background)
+        {
+            return; // no windows or reminders at sign-in; they come at the next start by hand
+        }
+
         if (AccountSetup.NeedsWelcome(_settings.Current, _session.IsSignedIn))
         {
             OpenWelcome(connect: false);
@@ -200,7 +213,7 @@ public sealed class AppController : IAsyncDisposable
             return;
         }
 
-        var window = new WelcomeWindow(_settings, _session, _api, OpenBrowser, connect);
+        var window = new WelcomeWindow(_settings, _session, _api, OpenBrowser, _startup, connect);
         _welcome = window;
         window.Closed += (_, _) =>
         {
@@ -579,6 +592,11 @@ public sealed class AppController : IAsyncDisposable
         menu.Items.Add(_moveItem);
         menu.Items.Add(_toggleItem);
         menu.Items.Add(settingsItem);
+        _startupItem = new MenuItem();
+        _startupItem.Click += (_, _) => ToggleStartup();
+        menu.Items.Add(_startupItem);
+        menu.Opened += (_, _) => UpdateStartupItem();
+        UpdateStartupItem();
         _downloadItem = new MenuItem { Header = "Spotify'ı indir…", Visibility = Visibility.Collapsed };
         _downloadItem.Click += (_, _) => OpenBrowser("https://www.spotify.com/download/windows/");
         menu.Items.Add(_downloadItem);
@@ -598,7 +616,50 @@ public sealed class AppController : IAsyncDisposable
             },
         };
         _tray.TrayMouseDoubleClick += (_, _) => OpenSettings();
-        _tray.ForceCreate(enablesEfficiencyMode: false);
+        ShowTrayIcon();
+    }
+
+    private void ShowTrayIcon()
+    {
+        try
+        {
+            _tray?.ForceCreate(enablesEfficiencyMode: false);
+        }
+        catch (InvalidOperationException)
+        {
+            // Right after sign-in the taskbar may not be ready yet.
+            var retry = new System.Windows.Threading.DispatcherTimer { Interval = TimeSpan.FromSeconds(3) };
+            retry.Tick += (_, _) =>
+            {
+                retry.Stop();
+                ShowTrayIcon();
+            };
+            retry.Start();
+        }
+    }
+
+    private void UpdateStartupItem()
+    {
+        if (_startupItem is null)
+        {
+            return;
+        }
+
+        var state = _startup.State;
+        _startupItem.IsChecked = state == StartupState.On;
+        _startupItem.IsEnabled = state != StartupState.BlockedByWindows;
+        _startupItem.Header = state == StartupState.BlockedByWindows
+            ? "Windows ile başlat (Görev Yöneticisi'nde kapalı)"
+            : "Windows ile başlat";
+    }
+
+    private void ToggleStartup()
+    {
+        var on = _startup.State != StartupState.On;
+        var error = _startup.SetEnabled(on);
+        UpdateStartupItem();
+        var hint = on ? _startup.Hint : "";
+        ShowToast(error ?? (hint.Length > 0 ? hint : on ? "Windows ile başlayacak ✓" : "Windows ile başlamayacak."));
     }
 
     private void OpenSettings()
@@ -612,7 +673,7 @@ public sealed class AppController : IAsyncDisposable
         // The widget keeps working while settings are open. Shortcuts pause only while one is being
         // recorded, because Windows never delivers a registered combo to the recording box.
         var window = new SettingsWindow(_settings, _session, _api, OpenBrowser,
-            () => OpenWelcome(connect: true), DisconnectAsync, OnSettingsPreview);
+            () => OpenWelcome(connect: true), DisconnectAsync, _startup, OnSettingsPreview);
         _settingsWindow = window;
         window.RecordingHotkeyChanged += recording =>
         {

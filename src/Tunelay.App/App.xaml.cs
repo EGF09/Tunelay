@@ -14,10 +14,16 @@ public partial class App : Application
     {
         base.OnStartup(e);
 
+        // Started with Windows: no dialogs, they would steal focus during sign-in.
+        var background = StartupSwitch.IsBackgroundStart(e.Args);
         _singleInstance = new Mutex(initiallyOwned: true, $@"Local\{AppInfo.Name}.SingleInstance", out var isFirst);
         if (!isFirst)
         {
-            MessageBox.Show($"{AppInfo.Name} zaten çalışıyor (sistem tepsisine bakın).", AppInfo.Name);
+            if (!background)
+            {
+                MessageBox.Show($"{AppInfo.Name} zaten çalışıyor (sistem tepsisine bakın).", AppInfo.Name);
+            }
+
             Shutdown();
             return;
         }
@@ -26,9 +32,13 @@ public partial class App : Application
         _legacyInstance = new Mutex(initiallyOwned: true, $@"Local\{AppInfo.LegacyName}.SingleInstance", out var oldNotRunning);
         if (!oldNotRunning)
         {
-            MessageBox.Show(
-                $"Eski sürüm ({AppInfo.LegacyName}) hâlâ açık. Tepsideki ♪ simgesinden Çıkış'ı seçip {AppInfo.Name}'i yeniden açın.",
-                AppInfo.Name);
+            if (!background)
+            {
+                MessageBox.Show(
+                    $"Eski sürüm ({AppInfo.LegacyName}) hâlâ açık. Tepsideki ♪ simgesinden Çıkış'ı seçip {AppInfo.Name}'i yeniden açın.",
+                    AppInfo.Name);
+            }
+
             Shutdown();
             return;
         }
@@ -39,7 +49,7 @@ public partial class App : Application
             args.Handled = true;
         };
 
-        _controller = new AppController(this);
+        _controller = new AppController(this, background);
         _controller.Start();
     }
 

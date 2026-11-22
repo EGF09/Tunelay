@@ -89,6 +89,9 @@
                     <Button Content="Hesabımı bağla" HorizontalAlignment="Left" Click="OnConnectAccount" />
                 </StackPanel>
             </Border>
+
+            <CheckBox x:Name="StartupToggle" Content="Windows ile başlat" Margin="2,18,0,0" HorizontalAlignment="Left" />
+            <TextBlock x:Name="StartupHint" Style="{StaticResource Body}" FontSize="12" Margin="52,4,0,0" />
         </StackPanel>
 
         <StackPanel x:Name="WizardPage" Visibility="Collapsed">
