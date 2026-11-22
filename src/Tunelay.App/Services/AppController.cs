@@ -23,6 +23,8 @@ public sealed class AppController : IAsyncDisposable
     private readonly SettingsStore _settings;
     private readonly SpotifyAuthSession _session;
     private readonly SpotifyClient _api;
+    private readonly SpotifyStarter _starter;
+    private MenuItem? _downloadItem;
     private readonly PlaybackService _playback;
     private readonly MoodService _moods;
     private readonly OverlayViewModel _vm = new();
@@ -54,7 +56,8 @@ public sealed class AppController : IAsyncDisposable
         {
             InnerHandler = new SocketsHttpHandler { PooledConnectionLifetime = TimeSpan.FromMinutes(5) },
         };
-        _api = new SpotifyClient(new HttpClient(handler) { BaseAddress = SpotifyClient.BaseAddress, Timeout = TimeSpan.FromSeconds(15) });
+        _starter = new SpotifyStarter(new SpotifyLauncher());
+        _api = new SpotifyClient(new HttpClient(handler) { BaseAddress = SpotifyClient.BaseAddress, Timeout = TimeSpan.FromSeconds(15) }, _starter);
         _playback = new PlaybackService(_api, () => _session.IsSignedIn);
         _moods = new MoodService(_api, _settings);
 
@@ -101,6 +104,17 @@ public sealed class AppController : IAsyncDisposable
             }
         });
         _moods.ActiveMoodChanged += _ => Ui(ApplyMoods);
+
+        // "Opening" stays up for the whole wait; the result replaces it.
+        _starter.Starting += () => Ui(() => _card.ShowToast("Spotify açılıyor…", TimeSpan.FromSeconds(22)));
+        _starter.Ready += () => Ui(() => ShowToast("Spotify hazır, çalınıyor…"));
+        _starter.NotInstalled += () => Ui(() =>
+        {
+            if (_downloadItem is not null)
+            {
+                _downloadItem.Visibility = Visibility.Visible;
+            }
+        });
 
         _foreground.Changed += OnForegroundChanged;
         _settings.Saved += _ => Ui(() =>
@@ -451,6 +465,9 @@ public sealed class AppController : IAsyncDisposable
         menu.Items.Add(_moveItem);
         menu.Items.Add(_toggleItem);
         menu.Items.Add(settingsItem);
+        _downloadItem = new MenuItem { Header = "Spotify'ı indir…", Visibility = Visibility.Collapsed };
+        _downloadItem.Click += (_, _) => OpenBrowser("https://www.spotify.com/download/windows/");
+        menu.Items.Add(_downloadItem);
         menu.Items.Add(new Separator());
         menu.Items.Add(exitItem);
 

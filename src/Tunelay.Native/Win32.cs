@@ -121,6 +121,9 @@ internal static partial class Win32
     [LibraryImport("dwmapi.dll")]
     public static partial int DwmSetWindowAttribute(nint hwnd, int attribute, ref int value, int size);
 
+    [LibraryImport("shell32.dll", EntryPoint = "ShellExecuteW", StringMarshalling = StringMarshalling.Utf16)]
+    public static partial nint ShellExecute(nint hwnd, string verb, string file, string? arguments, string? directory, int show);
+
     public const int GWL_STYLE = -16;
     public const long WS_CAPTION = 0x00C00000, WS_THICKFRAME = 0x00040000, WS_SYSMENU = 0x00080000,
         WS_MINIMIZEBOX = 0x00020000, WS_MAXIMIZEBOX = 0x00010000;

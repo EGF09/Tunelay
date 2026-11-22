@@ -48,9 +48,12 @@ public sealed class SpotifyClient : ISpotifyApi
     };
 
     private readonly HttpClient _http;
+    private readonly SpotifyStarter? _starter;
 
-    public SpotifyClient(HttpClient http)
+    /// <param name="starter">When given, a play request may open Spotify on this PC.</param>
+    public SpotifyClient(HttpClient http, SpotifyStarter? starter = null)
     {
+        _starter = starter;
         _http = http;
         _http.BaseAddress ??= BaseAddress;
     }
@@ -67,7 +70,7 @@ public sealed class SpotifyClient : ISpotifyApi
         return await response.Content.ReadFromJsonAsync<PlaybackState>(Json, ct).ConfigureAwait(false);
     }
 
-    public Task PlayAsync(CancellationToken ct = default) => WithDeviceFallbackAsync(id => Send(HttpMethod.Put, "me/player/play" + DeviceQuery(id), null, ct), ct);
+    public Task PlayAsync(CancellationToken ct = default) => WithDeviceFallbackAsync(id => Send(HttpMethod.Put, "me/player/play" + DeviceQuery(id), null, ct), choosesMusic: false, ct);
 
     public Task PauseAsync(CancellationToken ct = default) => Send(HttpMethod.Put, "me/player/pause", null, ct);
 
@@ -78,14 +81,31 @@ public sealed class SpotifyClient : ISpotifyApi
     public Task SetVolumeAsync(int percent, CancellationToken ct = default) =>
         Send(HttpMethod.Put, $"me/player/volume?volume_percent={Math.Clamp(percent, 0, 100)}", null, ct);
 
-    public Task SetShuffleAsync(bool on, CancellationToken ct = default) =>
-        Send(HttpMethod.Put, $"me/player/shuffle?state={(on ? "true" : "false")}", null, ct);
+    public async Task SetShuffleAsync(bool on, CancellationToken ct = default)
+    {
+        var path = $"me/player/shuffle?state={(on ? "true" : "false")}";
+        try
+        {
+            await Send(HttpMethod.Put, path, null, ct).ConfigureAwait(false);
+        }
+        catch (SpotifyApiException ex) when (ex.Status == HttpStatusCode.NotFound)
+        {
+            // Right after a start this PC may not count as active yet. Never opens Spotify.
+            var device = await FindDeviceAsync(ct).ConfigureAwait(false);
+            if (device is null)
+            {
+                throw;
+            }
+
+            await CallOnDeviceAsync(id => Send(HttpMethod.Put, $"{path}&device_id={Uri.EscapeDataString(id!)}", null, ct), device, ct).ConfigureAwait(false);
+        }
+    }
 
     public Task SetRepeatAsync(string state, CancellationToken ct = default) =>
         Send(HttpMethod.Put, $"me/player/repeat?state={Uri.EscapeDataString(state)}", null, ct);
 
     public Task PlayContextAsync(string contextUri, CancellationToken ct = default) =>
-        WithDeviceFallbackAsync(id => Send(HttpMethod.Put, "me/player/play" + DeviceQuery(id), new { context_uri = contextUri }, ct), ct);
+        WithDeviceFallbackAsync(id => Send(HttpMethod.Put, "me/player/play" + DeviceQuery(id), new { context_uri = contextUri }, ct), choosesMusic: true, ct);
 
     public async Task<IReadOnlyList<SimplePlaylist>> GetMyPlaylistsAsync(CancellationToken ct = default)
     {
@@ -152,24 +172,69 @@ public sealed class SpotifyClient : ISpotifyApi
 
     /// <summary>
     /// When nothing is playing, Spotify answers NO_ACTIVE_DEVICE; retry on the active device if one
-    /// appeared meanwhile, otherwise on this PC. An idle phone or speaker is never started by itself.
+    /// appeared meanwhile, otherwise on this PC, opening Spotify here if needed.
+    /// An idle phone or speaker is never started by itself.
     /// </summary>
-    private async Task WithDeviceFallbackAsync(Func<string?, Task> call, CancellationToken ct)
+    private async Task WithDeviceFallbackAsync(Func<string?, Task> call, bool choosesMusic, CancellationToken ct)
     {
         try
         {
             await call(null).ConfigureAwait(false);
+            return;
         }
         catch (SpotifyApiException ex) when (ex.Reason == "NO_ACTIVE_DEVICE" || ex.Status == HttpStatusCode.NotFound)
         {
-            using var response = await _http.GetAsync("me/player/devices", ct).ConfigureAwait(false);
-            await EnsureOkAsync(response, ct).ConfigureAwait(false);
-            var list = await response.Content.ReadFromJsonAsync<DeviceList>(Json, ct).ConfigureAwait(false);
-            var usable = list?.Devices.Where(d => d.Id is not null).ToList() ?? [];
-            var device = usable.FirstOrDefault(d => d.IsActive)
-                         ?? usable.FirstOrDefault(IsThisPc)
-                         ?? throw new SpotifyApiException(HttpStatusCode.NotFound, "NO_ACTIVE_DEVICE", "Bu bilgisayarda Spotify açık değil. Spotify'ı açıp tekrar deneyin.");
-            await call(device.Id).ConfigureAwait(false);
+        }
+
+        // While Spotify is starting, join that start, so an earlier choice can't play over this one.
+        var device = _starter is { IsStarting: true } ? null : await FindDeviceAsync(ct).ConfigureAwait(false);
+        if (_starter is { LocalAppRunning: false } && device is not null && IsThisPc(device))
+        {
+            device = null; // a stale listing: Spotify was just closed on this PC
+        }
+
+        if (device is not null)
+        {
+            await CallOnDeviceAsync(call, device, ct).ConfigureAwait(false);
+            return;
+        }
+
+        if (_starter is null)
+        {
+            throw new SpotifyApiException(HttpStatusCode.NotFound, "NO_ACTIVE_DEVICE", "Bu bilgisayarda Spotify açık değil. Spotify'ı açıp tekrar deneyin.");
+        }
+
+        device = await _starter.StartAsync(FindDeviceAsync, choosesMusic, ct).ConfigureAwait(false)
+                 ?? throw new SpotifyApiException(HttpStatusCode.Conflict, "SUPERSEDED", "Spotify açılıyor, son seçiminiz çalınacak.");
+        await CallOnDeviceAsync(call, device, ct).ConfigureAwait(false);
+    }
+
+    /// <summary>The active device, otherwise this PC, otherwise null.</summary>
+    private async Task<Device?> FindDeviceAsync(CancellationToken ct)
+    {
+        using var response = await _http.GetAsync("me/player/devices", ct).ConfigureAwait(false);
+        await EnsureOkAsync(response, ct).ConfigureAwait(false);
+        var list = await response.Content.ReadFromJsonAsync<DeviceList>(Json, ct).ConfigureAwait(false);
+        var usable = list?.Devices.Where(d => d.Id is not null).ToList() ?? [];
+        return usable.FirstOrDefault(d => d.IsActive) ?? usable.FirstOrDefault(IsThisPc);
+    }
+
+    /// <summary>A device that has just appeared can refuse the first command or two.</summary>
+    private async Task CallOnDeviceAsync(Func<string?, Task> call, Device device, CancellationToken ct)
+    {
+        for (var attempt = 1; ; attempt++)
+        {
+            try
+            {
+                await call(device.Id).ConfigureAwait(false);
+                return;
+            }
+            catch (SpotifyApiException ex) when (
+                _starter is not null && attempt < 6
+                && (ex.Status == HttpStatusCode.NotFound || (int)ex.Status >= 500))
+            {
+                await Task.Delay(_starter.Interval, ct).ConfigureAwait(false);
+            }
         }
     }
 

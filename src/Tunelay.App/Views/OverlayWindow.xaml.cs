@@ -247,8 +247,11 @@ public partial class OverlayWindow : Window
         Apply();
     }
 
-    public void ShowToast(string message)
+    /// <param name="message">The text to show; replaces any current one.</param>
+    /// <param name="duration">How long it stays unless replaced (default 3 s).</param>
+    public void ShowToast(string message, TimeSpan? duration = null)
     {
+        _toastTimer.Interval = duration ?? ToastTime;
         _vm.Toast = message;
         var wasHidden = ToastBox.Visibility != Visibility.Visible;
         ToastBox.Visibility = Visibility.Visible;
