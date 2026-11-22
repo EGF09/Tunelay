@@ -29,9 +29,9 @@ public sealed class MoodService(ISpotifyApi api, SettingsStore settings)
             await api.PlayContextAsync(playlist.Uri, ct).ConfigureAwait(false);
             await api.SetShuffleAsync(true, ct).ConfigureAwait(false);
         }
-        catch (SpotifyApiException ex)
+        catch (Exception ex) when (SpotifyFailure.IsExpected(ex) && !ct.IsCancellationRequested)
         {
-            return new MoodResult(false, ex.Message);
+            return new MoodResult(false, SpotifyFailure.Describe(ex));
         }
 
         settings.Update(s => s.ActiveMood = mood.Id);
@@ -69,9 +69,9 @@ public sealed class MoodService(ISpotifyApi api, SettingsStore settings)
             await api.AddToPlaylistAsync(playlist.Id, track.Uri, ct).ConfigureAwait(false);
             return new MoodResult(true, $"“{track.Name}” → {playlist.Name}");
         }
-        catch (SpotifyApiException ex)
+        catch (Exception ex) when (SpotifyFailure.IsExpected(ex) && !ct.IsCancellationRequested)
         {
-            return new MoodResult(false, ex.Message);
+            return new MoodResult(false, SpotifyFailure.Describe(ex));
         }
     }
 }

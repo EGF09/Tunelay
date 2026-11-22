@@ -131,7 +131,7 @@ public class TokenTests
         var path = Path.Combine(Path.GetTempPath(), Guid.NewGuid() + ".bin");
         var store = new TokenStore(path, new XorProtector());
         store.Save(new TokenSet("stale", "revoked", DateTimeOffset.UtcNow.AddSeconds(-5)));
-        var http = new HttpClient(new StubHandler(_ => new HttpResponseMessage(HttpStatusCode.BadRequest)));
+        var http = new HttpClient(new StubHandler(_ => Json("""{"error":"invalid_grant"}""", HttpStatusCode.BadRequest)));
         var session = new SpotifyAuthSession(new TokenEndpointClient(http), store, () => "cid");
         bool? signedIn = null;
         session.SignedInChanged += v => signedIn = v;

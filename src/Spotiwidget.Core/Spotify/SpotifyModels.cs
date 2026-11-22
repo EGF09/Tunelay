@@ -26,7 +26,8 @@ public static class RepeatMode
     };
 }
 
-public sealed record Device(string? Id, string Name, bool IsActive, int? VolumePercent);
+/// <param name="Type">Spotify's device type, e.g. "Computer" or "Smartphone".</param>
+public sealed record Device(string? Id, string Name, bool IsActive, int? VolumePercent, string? Type = null);
 
 public sealed record Track(string Id, string Uri, string Name, int DurationMs, IReadOnlyList<Artist> Artists, Album? Album)
 {

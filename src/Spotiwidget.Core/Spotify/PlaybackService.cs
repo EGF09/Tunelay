@@ -175,7 +175,7 @@ public sealed class PlaybackService(ISpotifyApi api, Func<bool> isSignedIn) : IA
         {
             SetLiked(track.Id, await api.IsInLibraryAsync(track).ConfigureAwait(false));
         }
-        catch (Exception ex) when (ex is SpotifyApiException or HttpRequestException or TaskCanceledException)
+        catch (Exception ex) when (SpotifyFailure.IsExpected(ex))
         {
             // Unknown (e.g. an older login without library scope); the heart stays neutral.
         }
@@ -198,13 +198,9 @@ public sealed class PlaybackService(ISpotifyApi api, Func<bool> isSignedIn) : IA
         {
             await command().ConfigureAwait(false);
         }
-        catch (SpotifyApiException ex)
+        catch (Exception ex) when (SpotifyFailure.IsExpected(ex))
         {
-            Error?.Invoke(ex.Message);
-        }
-        catch (HttpRequestException)
-        {
-            Error?.Invoke("Spotify'a ulaşılamadı.");
+            Error?.Invoke(SpotifyFailure.Describe(ex));
         }
 
         // Spotify takes a moment to reflect a change.
@@ -269,9 +265,9 @@ public sealed class PlaybackService(ISpotifyApi api, Func<bool> isSignedIn) : IA
         catch (OperationCanceledException) when (ct.IsCancellationRequested)
         {
         }
-        catch (Exception ex) when (ex is SpotifyApiException or HttpRequestException or TaskCanceledException)
+        catch (Exception ex) when (SpotifyFailure.IsExpected(ex))
         {
-            var message = ex is SpotifyApiException api ? api.Message : "Spotify'a ulaşılamadı.";
+            var message = SpotifyFailure.Describe(ex);
             if (message != _lastError)
             {
                 _lastError = message;

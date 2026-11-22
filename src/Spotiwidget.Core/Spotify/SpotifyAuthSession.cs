@@ -94,11 +94,16 @@ public sealed class SpotifyAuthSession(
                 store.Save(_current);
                 return _current.AccessToken;
             }
-            catch (SpotifyAuthException)
+            catch (SpotifyAuthException ex) when (ex.InvalidGrant)
             {
                 // Refresh token revoked or expired: the user must sign in again.
                 _current = null;
                 store.Clear();
+            }
+            catch (SpotifyAuthException ex)
+            {
+                // Anything else may be fixable or temporary: keep the saved session.
+                throw new SpotifyApiException(System.Net.HttpStatusCode.BadRequest, "TOKEN_REFRESH_FAILED", ex.Message);
             }
         }
         finally

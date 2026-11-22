@@ -78,7 +78,15 @@ public sealed class TokenEndpointClient(HttpClient http, TimeProvider? clock = n
         var body = await response.Content.ReadAsStringAsync(ct).ConfigureAwait(false);
         if (!response.IsSuccessStatusCode)
         {
-            throw new SpotifyAuthException($"Token isteği başarısız ({(int)response.StatusCode}): {body}");
+            var status = response.StatusCode;
+            if ((int)status >= 500 || status == HttpStatusCode.TooManyRequests)
+            {
+                throw new HttpRequestException($"Spotify giriş sunucusu yanıt vermiyor ({(int)status}).", null, status);
+            }
+
+            var error = ReadError(body);
+            var detail = error is null ? "" : $": {error}";
+            throw new SpotifyAuthException($"Token isteği başarısız ({(int)status}){detail}", invalidGrant: error == "invalid_grant");
         }
 
         var dto = JsonSerializer.Deserialize<TokenResponse>(body)
@@ -89,6 +97,24 @@ public sealed class TokenEndpointClient(HttpClient http, TimeProvider? clock = n
         return new TokenSet(dto.AccessToken, refresh, _clock.GetUtcNow().AddSeconds(dto.ExpiresIn), dto.Scope);
     }
 
+    /// <summary>The OAuth "error" code, or null when the body isn't an OAuth error (proxy or captive-portal page).</summary>
+    private static string? ReadError(string body)
+    {
+        try
+        {
+            using var json = JsonDocument.Parse(body);
+            return json.RootElement.ValueKind == JsonValueKind.Object
+                   && json.RootElement.TryGetProperty("error", out var error)
+                   && error.ValueKind == JsonValueKind.String
+                ? error.GetString()
+                : null;
+        }
+        catch (JsonException)
+        {
+            return null;
+        }
+    }
+
     private sealed record TokenResponse(
         [property: JsonPropertyName("access_token")] string AccessToken,
         [property: JsonPropertyName("refresh_token")] string? RefreshToken,
@@ -96,7 +122,11 @@ public sealed class TokenEndpointClient(HttpClient http, TimeProvider? clock = n
         [property: JsonPropertyName("scope")] string? Scope);
 }
 
-public sealed class SpotifyAuthException(string message) : Exception(message);
+public sealed class SpotifyAuthException(string message, bool invalidGrant = false) : Exception(message)
+{
+    /// <summary>Spotify revoked or expired the grant. Only this ends a saved session.</summary>
+    public bool InvalidGrant { get; } = invalidGrant;
+}
 
 /// <summary>Runs the browser login: opens the authorize URL and waits on the loopback redirect.</summary>
 public static class LoopbackLogin
@@ -126,7 +156,8 @@ public static class LoopbackLogin
             }
 
             var q = ctx.Request.QueryString;
-            var ok = q["state"] == state && !string.IsNullOrEmpty(q["code"]);
+            var ours = q["state"] == state;
+            var ok = ours && !string.IsNullOrEmpty(q["code"]);
             await RespondAsync(ctx, ok
                 ? "Spotiwidget bağlandı. Bu sekmeyi kapatabilirsiniz."
                 : "Giriş başarısız: " + (q["error"] ?? "geçersiz yanıt")).ConfigureAwait(false);
@@ -136,7 +167,8 @@ public static class LoopbackLogin
                 return (q["code"]!, verifier);
             }
 
-            if (q["error"] is { } error)
+            // Only the redirect we started may end the login; any local page can hit this port.
+            if (ours && q["error"] is { } error)
             {
                 throw new SpotifyAuthException("Spotify girişi reddedildi: " + error);
             }

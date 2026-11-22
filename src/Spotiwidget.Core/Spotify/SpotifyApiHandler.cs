@@ -78,6 +78,20 @@ public sealed class SpotifyApiHandler(IAccessTokenProvider tokens, Func<TimeSpan
     }
 }
 
+/// <summary>Failures that are normal at runtime (offline, timeout, bad response) and are reported, not thrown.</summary>
+internal static class SpotifyFailure
+{
+    public static bool IsExpected(Exception ex) =>
+        ex is SpotifyApiException or HttpRequestException or TaskCanceledException or System.Text.Json.JsonException;
+
+    public static string Describe(Exception ex) => ex switch
+    {
+        SpotifyApiException api => api.Message,
+        System.Text.Json.JsonException => "Spotify'dan beklenmeyen bir yanıt geldi.",
+        _ => "Spotify'a ulaşılamadı.",
+    };
+}
+
 public sealed class SpotifyApiException(HttpStatusCode status, string? reason, string message) : Exception(message)
 {
     public HttpStatusCode Status { get; } = status;

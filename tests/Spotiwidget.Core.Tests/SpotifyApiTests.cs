@@ -112,14 +112,14 @@ public class SpotifyApiHandlerTests
     }
 
     [Fact]
-    public async Task Falls_back_to_first_device_when_none_active()
+    public async Task Falls_back_to_this_pc_when_none_active()
     {
         var (http, stub, _, _) = Build((r, _) =>
         {
             var path = r.RequestUri!.PathAndQuery;
             if (path.EndsWith("/me/player/devices"))
             {
-                return TokenTests.Json("""{"devices":[{"id":"dev9","name":"PC","is_active":false,"volume_percent":50}]}""");
+                return TokenTests.Json("{\"devices\":[{\"id\":\"dev9\",\"type\":\"Computer\",\"name\":\"" + Environment.MachineName + "\",\"is_active\":false,\"volume_percent\":50}]}");
             }
 
             return path.Contains("device_id=dev9")

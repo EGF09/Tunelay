@@ -150,7 +150,10 @@ public sealed class SpotifyClient : ISpotifyApi
         }
     }
 
-    /// <summary>When nothing is playing, Spotify answers NO_ACTIVE_DEVICE; retry on the first available device.</summary>
+    /// <summary>
+    /// When nothing is playing, Spotify answers NO_ACTIVE_DEVICE; retry on the active device if one
+    /// appeared meanwhile, otherwise on this PC. An idle phone or speaker is never started by itself.
+    /// </summary>
     private async Task WithDeviceFallbackAsync(Func<string?, Task> call, CancellationToken ct)
     {
         try
@@ -162,11 +165,19 @@ public sealed class SpotifyClient : ISpotifyApi
             using var response = await _http.GetAsync("me/player/devices", ct).ConfigureAwait(false);
             await EnsureOkAsync(response, ct).ConfigureAwait(false);
             var list = await response.Content.ReadFromJsonAsync<DeviceList>(Json, ct).ConfigureAwait(false);
-            var device = list?.Devices.FirstOrDefault(d => d.Id is not null)
-                         ?? throw new SpotifyApiException(HttpStatusCode.NotFound, "NO_ACTIVE_DEVICE", "Bir cihazda Spotify'ı açın.");
+            var usable = list?.Devices.Where(d => d.Id is not null).ToList() ?? [];
+            var device = usable.FirstOrDefault(d => d.IsActive)
+                         ?? usable.FirstOrDefault(IsThisPc)
+                         ?? throw new SpotifyApiException(HttpStatusCode.NotFound, "NO_ACTIVE_DEVICE", "Bu bilgisayarda Spotify açık değil. Spotify'ı açıp tekrar deneyin.");
             await call(device.Id).ConfigureAwait(false);
         }
     }
+
+    // MachineName is cut to 15 characters on Windows, so the DNS host name is accepted too.
+    private static bool IsThisPc(Device device) =>
+        string.Equals(device.Type, "Computer", StringComparison.OrdinalIgnoreCase)
+        && (string.Equals(device.Name, Environment.MachineName, StringComparison.OrdinalIgnoreCase)
+            || string.Equals(device.Name, Dns.GetHostName(), StringComparison.OrdinalIgnoreCase));
 
     private static string DeviceQuery(string? deviceId) =>
         deviceId is null ? "" : "?device_id=" + Uri.EscapeDataString(deviceId);
