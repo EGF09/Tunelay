@@ -44,9 +44,8 @@ public sealed class SpotifyAuthSession(
         finally
         {
             _gate.Release();
+            SignedInChanged?.Invoke(false); // signed out in memory even if the file couldn't be deleted
         }
-
-        SignedInChanged?.Invoke(false);
     }
 
     public async Task<string?> GetAccessTokenAsync(CancellationToken ct)

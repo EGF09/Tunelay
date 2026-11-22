@@ -66,8 +66,17 @@ public sealed class MoodService(ISpotifyApi api, SettingsStore settings)
 
         try
         {
+            if (!await api.CanEditPlaylistAsync(playlist.Id, ct).ConfigureAwait(false))
+            {
+                return new MoodResult(false, $"Eklenemedi: “{playlist.Name}” size ait değil. Yalnızca kendi veya ortak listelerinize ekleyebilirsiniz.");
+            }
+
             await api.AddToPlaylistAsync(playlist.Id, track.Uri, ct).ConfigureAwait(false);
             return new MoodResult(true, $"“{track.Name}” → {playlist.Name}");
+        }
+        catch (SpotifyApiException ex) when (ex.Status == System.Net.HttpStatusCode.NotFound)
+        {
+            return new MoodResult(false, $"Eklenemedi: “{playlist.Name}” erişilemiyor (silinmiş veya Spotify'ın kendi listesi olabilir).");
         }
         catch (Exception ex) when (SpotifyFailure.IsExpected(ex) && !ct.IsCancellationRequested)
         {

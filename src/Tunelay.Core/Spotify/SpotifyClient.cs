@@ -29,6 +29,9 @@ public interface ISpotifyApi
 
     Task AddToPlaylistAsync(string playlistId, string trackUri, CancellationToken ct = default);
 
+    /// <summary>Whether the user may change the playlist: their own, or one they collaborate on.</summary>
+    Task<bool> CanEditPlaylistAsync(string playlistId, CancellationToken ct = default);
+
     /// <summary>Whether the track is in the user's Liked Songs.</summary>
     Task<bool> IsInLibraryAsync(Track track, CancellationToken ct = default);
 
@@ -41,6 +44,8 @@ public interface ISpotifyApi
 public sealed class SpotifyClient : ISpotifyApi
 {
     public static readonly Uri BaseAddress = new("https://api.spotify.com/v1/");
+
+    internal const string NotRegisteredReason = "USER_NOT_REGISTERED";
 
     internal static readonly JsonSerializerOptions Json = new(JsonSerializerDefaults.Web)
     {
@@ -135,6 +140,24 @@ public sealed class SpotifyClient : ISpotifyApi
             // Older API surface.
             await Send(HttpMethod.Post, $"playlists/{playlistId}/tracks", body, ct).ConfigureAwait(false);
         }
+    }
+
+    public async Task<bool> CanEditPlaylistAsync(string playlistId, CancellationToken ct = default)
+    {
+        var path = $"playlists/{Uri.EscapeDataString(playlistId)}?fields={Uri.EscapeDataString("owner(id),collaborative,items(total)")}";
+        using var response = await _http.GetAsync(path, ct).ConfigureAwait(false);
+        await EnsureOkAsync(response, ct).ConfigureAwait(false);
+        var playlist = await response.Content.ReadFromJsonAsync<PlaylistAccess>(Json, ct).ConfigureAwait(false);
+        if (playlist?.Items is not null || playlist?.Collaborative == true)
+        {
+            return true;
+        }
+
+        // Only now is a second request needed: whose list is it?
+        using var me = await _http.GetAsync("me", ct).ConfigureAwait(false);
+        await EnsureOkAsync(me, ct).ConfigureAwait(false);
+        var user = await me.Content.ReadFromJsonAsync<UserRef>(Json, ct).ConfigureAwait(false);
+        return user?.Id is { } id && id == playlist?.Owner?.Id;
     }
 
     // Library: generic /me/library (Feb 2026 API) first, legacy /me/tracks when the new one is unavailable.
@@ -268,9 +291,10 @@ public sealed class SpotifyClient : ISpotifyApi
 
         string? reason = null;
         string? message = null;
+        var body = await response.Content.ReadAsStringAsync(ct).ConfigureAwait(false);
         try
         {
-            var envelope = await response.Content.ReadFromJsonAsync<ErrorEnvelope>(Json, ct).ConfigureAwait(false);
+            var envelope = JsonSerializer.Deserialize<ErrorEnvelope>(body, Json);
             reason = envelope?.Error?.Reason;
             message = envelope?.Error?.Message;
         }
@@ -278,12 +302,22 @@ public sealed class SpotifyClient : ISpotifyApi
         {
         }
 
+        // Development mode answers this as JSON or as plain text, with slightly different wording.
+        if (response.StatusCode == HttpStatusCode.Forbidden
+            && (body.Contains("not registered", StringComparison.OrdinalIgnoreCase)
+                || body.Contains("not be registered", StringComparison.OrdinalIgnoreCase)))
+        {
+            reason = NotRegisteredReason;
+        }
+
         var friendly = reason switch
         {
+            NotRegisteredReason => "Bu Spotify hesabı uygulamanın kullanıcı listesinde değil. "
+                + "Spotify panelinde uygulamanız → User Management bölümüne ekleyin, sonra yeniden bağlanın.",
             "NO_ACTIVE_DEVICE" => "Bir cihazda Spotify'ı açın.",
             "PREMIUM_REQUIRED" => "Bu işlem Spotify Premium gerektirir.",
             _ when response.StatusCode == HttpStatusCode.Forbidden && message?.Contains("scope", StringComparison.OrdinalIgnoreCase) == true
-                => "Bu özellik için izin yok. Ayarlar → Bağlantıyı kes → tekrar bağlanın.",
+                => "Bu özellik için izin yok. Ayarlar → Spotify → İzinleri yenile.",
             _ when response.StatusCode == HttpStatusCode.Forbidden => "Spotify bu işleme izin vermedi" + (message is null ? "." : $": {message}"),
             _ => $"Spotify hatası ({(int)response.StatusCode})" + (message is null ? "." : $": {message}"),
         };

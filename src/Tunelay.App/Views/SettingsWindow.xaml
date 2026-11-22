@@ -349,9 +349,8 @@
                 <!-- Spotify -->
                 <StackPanel x:Name="SpotifySection">
                     <TextBlock Style="{StaticResource Title}" Text="Spotify" />
-                    <TextBlock Style="{StaticResource Hint}" Margin="0,0,0,16">
-                        <Hyperlink Foreground="{StaticResource AccentBrush}" Click="OnOpenDashboard">developer.spotify.com/dashboard</Hyperlink><Run Text=" üzerinden bir uygulama oluşturun, aşağıdaki Redirect URI'yi ekleyin ve Client ID'yi yapıştırın." />
-                    </TextBlock>
+                    <TextBlock Style="{StaticResource Hint}" Margin="0,0,0,16"
+                               Text="Oynat, atla, karışık ve tekrar hesapsız çalışır. Ruh hali listeleri, ♡ ve ＋ için hesap bağlayın." />
 
                     <Border Style="{StaticResource Panel}">
                         <StackPanel>
@@ -364,31 +363,18 @@
                                     </StackPanel>
                                 </Border>
                             </Grid>
-                            <Grid>
-                                <Grid.ColumnDefinitions>
-                                    <ColumnDefinition Width="110" />
-                                    <ColumnDefinition Width="*" />
-                                    <ColumnDefinition Width="Auto" />
-                                </Grid.ColumnDefinitions>
-                                <Grid.RowDefinitions>
-                                    <RowDefinition />
-                                    <RowDefinition />
-                                </Grid.RowDefinitions>
-                                <TextBlock Style="{StaticResource Label}" Text="Client ID" />
-                                <TextBox x:Name="ClientIdBox" Grid.Column="1" Grid.ColumnSpan="2" />
-                                <TextBlock Grid.Row="1" Style="{StaticResource Label}" Text="Redirect URI" Margin="0,8,0,0" />
-                                <TextBox x:Name="RedirectBox" Grid.Row="1" Grid.Column="1" IsReadOnly="True" Margin="0,8,0,0"
-                                         Foreground="{StaticResource SubtleTextBrush}" />
-                                <Button Grid.Row="1" Grid.Column="2" Content="Kopyala" Margin="8,8,0,0" Click="OnCopyRedirect" />
-                            </Grid>
-                            <StackPanel Orientation="Horizontal" Margin="0,16,0,0">
-                                <Button x:Name="ConnectButton" Style="{StaticResource PrimaryButton}" Content="Spotify'a bağlan" Click="OnConnect" />
-                                <TextBlock x:Name="AuthStatus" VerticalAlignment="Center" Style="{StaticResource Hint}" />
+                            <StackPanel Orientation="Horizontal">
+                                <Button x:Name="ConnectButton" Style="{StaticResource PrimaryButton}" Content="Hesap bağla…" Click="OnConnect" />
+                                <Button x:Name="RefreshButton" Content="İzinleri yenile" Click="OnRefreshPermissions" Visibility="Collapsed"
+                                        ToolTip="Tarayıcıda yeniden onaylarsınız. Listeleriniz ve ayarlarınız kalır." />
+                                <Button x:Name="DisconnectButton" Content="Bağlantıyı kes…" Foreground="{StaticResource DangerBrush}"
+                                        Click="OnDisconnect" Visibility="Collapsed" />
                             </StackPanel>
+                            <TextBlock x:Name="AuthStatus" Style="{StaticResource Hint}" Margin="0,10,0,0" />
                         </StackPanel>
                     </Border>
                     <TextBlock Style="{StaticResource Hint}"
-                               Text="Oynatma kontrolü Spotify Premium gerektirir. ♡ (beğenme) çalışmıyorsa bağlantıyı kesip tekrar bağlanın." />
+                               Text="Hesapla kontrol Spotify Premium gerektirir. ♡ (beğenme) çalışmıyorsa İzinleri yenile'ye basın." />
                 </StackPanel>
 
                 <!-- Moods -->

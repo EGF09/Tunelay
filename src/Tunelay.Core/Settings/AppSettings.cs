@@ -57,6 +57,9 @@ public sealed class AppSettings
 {
     public string ClientId { get; set; } = "";
 
+    /// <summary>The first-run welcome was closed, with or without connecting.</summary>
+    public bool WelcomeSeen { get; set; }
+
     /// <summary>Default anchor of the player card when it has never been moved.</summary>
     public ScreenCorner Corner { get; set; } = ScreenCorner.BottomRight;
 

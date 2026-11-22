@@ -197,8 +197,9 @@ public static class Anim
             var shift = Parts(dot).Translate;
             Run(shift, TranslateTransform.XProperty, ms, EaseOut, new K(Math.Cos(angle) * distance, 1));
             Run(shift, TranslateTransform.YProperty, ms, EaseOut, new K(Math.Sin(angle) * distance, 1));
-            var fade = Run(dot, UIElement.OpacityProperty, ms, EaseOut, new K(1, 0.3), new K(0, 1));
-            fade.Completed += (_, _) => layer.Children.Remove(dot);
+            Run(dot, UIElement.OpacityProperty, ms, EaseOut, () => layer.Children.Remove(dot),
+                new K(1, 0, Jump: true), new K(1, 0.3), new K(0, 1));
+            dot.Opacity = 0; // base value once the animation stops
         }
     }
 
@@ -252,9 +253,9 @@ public static class Anim
         var grow = new[] { new K(0, 0, Jump: true), new K(1, (double)ms / total) };
         Run(s, ScaleTransform.ScaleXProperty, total, EaseOut, grow);
         Run(s, ScaleTransform.ScaleYProperty, total, EaseOut, grow);
-        var fade = Run(circle, UIElement.OpacityProperty, total, EaseOut,
-            new K(1, (ms + 700.0) / total), new K(0, 1));
-        fade.Completed += (_, _) => host.Children.Remove(circle);
+        Run(circle, UIElement.OpacityProperty, total, EaseOut, () => host.Children.Remove(circle),
+            new K(1, 0, Jump: true), new K(1, (ms + 700.0) / total), new K(0, 1));
+        circle.Opacity = 0; // base value once the animation stops
     }
 
     // ---------- Plumbing ----------
@@ -271,7 +272,11 @@ public static class Anim
         Run(scale, ScaleTransform.ScaleYProperty, ms, EaseOut, keys);
     }
 
-    private static DoubleAnimationUsingKeyFrames Run(IAnimatable target, DependencyProperty property, int ms, IEasingFunction ease, params K[] keys)
+    private static void Run(IAnimatable target, DependencyProperty property, int ms, IEasingFunction ease, params K[] keys) =>
+        Run(target, property, ms, ease, done: null, keys);
+
+    /// <param name="done">Passed in, because BeginAnimation copies the animation: a handler attached later never runs.</param>
+    private static void Run(IAnimatable target, DependencyProperty property, int ms, IEasingFunction ease, Action? done, params K[] keys)
     {
         var animation = new DoubleAnimationUsingKeyFrames
         {
@@ -287,8 +292,12 @@ public static class Anim
         }
 
         Timeline.SetDesiredFrameRate(animation, FrameRate);
+        if (done is not null)
+        {
+            animation.Completed += (_, _) => done();
+        }
+
         target.BeginAnimation(property, animation);
-        return animation;
     }
 
     private static DoubleAnimation Make(double from, double to, int ms)

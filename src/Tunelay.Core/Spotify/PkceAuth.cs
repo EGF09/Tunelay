@@ -131,14 +131,38 @@ public sealed class SpotifyAuthException(string message, bool invalidGrant = fal
 /// <summary>Runs the browser login: opens the authorize URL and waits on the loopback redirect.</summary>
 public static class LoopbackLogin
 {
+    private const int Port = 5543; // also in PkceAuth.RedirectUri, which users register with Spotify
+
+    /// <summary>Checked before the browser opens, so a taken port doesn't end on a dead redirect page.</summary>
+    internal static void EnsurePortFree(int port)
+    {
+        var listeners = System.Net.NetworkInformation.IPGlobalProperties.GetIPGlobalProperties().GetActiveTcpListeners();
+        if (listeners.Any(e => e.Port == port))
+        {
+            throw PortTaken(port);
+        }
+    }
+
+    private static SpotifyAuthException PortTaken(int port) => new(
+        $"Giriş için gereken {port} numaralı bağlantı noktası dolu. Açık kalmış başka bir giriş denemesini "
+        + "veya bu portu kullanan programı kapatıp yeniden deneyin.");
+
     public static async Task<(string Code, string Verifier)> RunAsync(string clientId, Action<string> openBrowser, CancellationToken ct)
     {
         var verifier = PkceAuth.GenerateVerifier();
         var state = PkceAuth.GenerateState();
 
         using var listener = new HttpListener();
-        listener.Prefixes.Add("http://127.0.0.1:5543/callback/");
-        listener.Start();
+        listener.Prefixes.Add($"http://127.0.0.1:{Port}/callback/");
+        EnsurePortFree(Port);
+        try
+        {
+            listener.Start();
+        }
+        catch (HttpListenerException)
+        {
+            throw PortTaken(Port);
+        }
 
         openBrowser(PkceAuth.BuildAuthorizeUrl(clientId, PkceAuth.ComputeChallenge(verifier), state));
 

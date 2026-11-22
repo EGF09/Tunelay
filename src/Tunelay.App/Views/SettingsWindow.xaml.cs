@@ -6,6 +6,7 @@ using System.Windows.Interop;
 using System.Windows.Media;
 using System.Windows.Threading;
 using Tunelay.App.ViewModels;
+using Tunelay.Core;
 using Tunelay.Core.Settings;
 using Tunelay.Core.Spotify;
 using Tunelay.Native;
@@ -23,7 +24,6 @@ public sealed record SettingsPreview(
 
 public partial class SettingsWindow : Window
 {
-    private const string DashboardUrl = "https://developer.spotify.com/dashboard";
     private const string PressKeyText = "Tuşa basın…";
     private const string UnassignedText = "Atanmadı";
 
@@ -75,19 +75,24 @@ public partial class SettingsWindow : Window
     /// <summary>One editable mood line: stripe, color, name, playlist, reorder, delete.</summary>
     private sealed record MoodRow(string Id, FrameworkElement Root, ComboBox Color, TextBox Name, ComboBox Playlist);
 
+    private readonly Action _connect;
+    private readonly Func<Task<bool>> _disconnect;
+
+    /// <param name="connect">Opens the connect wizard.</param>
+    /// <param name="disconnect">Signs out and deletes the Spotify data; false when a file couldn't be cleaned.</param>
     public SettingsWindow(SettingsStore store, SpotifyAuthSession session, ISpotifyApi api, Action<string> openBrowser,
-        Action<SettingsPreview>? preview = null)
+        Action connect, Func<Task<bool>> disconnect, Action<SettingsPreview>? preview = null)
     {
         InitializeComponent();
         _store = store;
         _session = session;
         _api = api;
         _openBrowser = openBrowser;
+        _connect = connect;
+        _disconnect = disconnect;
         _preview = preview;
 
         var s = store.Current;
-        ClientIdBox.Text = s.ClientId;
-        RedirectBox.Text = PkceAuth.RedirectUri;
         ShowMoodDockBox.IsChecked = s.ShowMoodDock;
         AnimationsBox.IsChecked = s.Animations;
         GameAnimationsBox.ItemsSource = GameAnimationLabels;
@@ -122,8 +127,20 @@ public partial class SettingsWindow : Window
             _ready = true;
             await LoadPlaylistsAsync();
         };
-        Closed += (_, _) => _loginCts?.Cancel();
+        _session.SignedInChanged += OnSignedInChanged;
+        Closed += (_, _) =>
+        {
+            _session.SignedInChanged -= OnSignedInChanged;
+            _loginCts?.Cancel();
+        };
     }
+
+    // The wizard, or a revoked grant, can change the account while this window is open.
+    private void OnSignedInChanged(bool signedIn) => Dispatcher.BeginInvoke(async () =>
+    {
+        UpdateAuthUi();
+        await LoadPlaylistsAsync();
+    });
 
     protected override void OnSourceInitialized(EventArgs e)
     {
@@ -434,8 +451,8 @@ public partial class SettingsWindow : Window
     private void UpdateAuthUi(string? error = null)
     {
         var signedIn = _session.IsSignedIn;
-        ConnectButton.Content = signedIn ? "Bağlantıyı kes" : "Spotify'a bağlan";
-        ConnectButton.Style = (Style)FindResource(signedIn ? typeof(Button) : "PrimaryButton");
+        ConnectButton.Visibility = signedIn ? Visibility.Collapsed : Visibility.Visible;
+        RefreshButton.Visibility = DisconnectButton.Visibility = signedIn ? Visibility.Visible : Visibility.Collapsed;
 
         var (dot, text, bg) = error is not null
             ? ("DangerBrush", "Sorun var", "#22F0616D")
@@ -444,69 +461,66 @@ public partial class SettingsWindow : Window
         StatusText.Text = text;
         StatusBadge.Background = new SolidColorBrush((Color)ColorConverter.ConvertFromString(bg));
         AuthStatus.Text = error ?? (signedIn && !_session.HasScope("user-library-modify")
-            ? "♡ için bir kez bağlantıyı kesip tekrar bağlanın."
+            ? "♡ için İzinleri yenile'ye basın."
             : "");
         Anim.Enter(StatusBadge, 0, 180, 0.3);
     }
 
-    private void OnOpenDashboard(object sender, RoutedEventArgs e) => _openBrowser(DashboardUrl);
+    private void OnConnect(object sender, RoutedEventArgs e) => _connect();
 
-    private void OnCopyRedirect(object sender, RoutedEventArgs e)
+    /// <summary>Signs in again over the current session, so nothing is lost if the browser step is abandoned.</summary>
+    private async void OnRefreshPermissions(object sender, RoutedEventArgs e)
     {
-        Clipboard.SetText(PkceAuth.RedirectUri);
-        var button = (Button)sender;
-        button.Content = "Kopyalandı ✓";
-        var timer = new DispatcherTimer { Interval = TimeSpan.FromSeconds(1.5) };
-        timer.Tick += (_, _) =>
-        {
-            timer.Stop();
-            button.Content = "Kopyala";
-        };
-        timer.Start();
-    }
-
-    private async void OnConnect(object sender, RoutedEventArgs e)
-    {
-        if (_session.IsSignedIn)
-        {
-            await _session.SignOutAsync();
-            UpdateAuthUi();
-            return;
-        }
-
-        var clientId = ClientIdBox.Text.Trim();
-        if (clientId.Length == 0)
-        {
-            UpdateAuthUi("Önce Client ID girin.");
-            ClientIdBox.Focus();
-            return;
-        }
-
-        // The session reads the client id from settings, so persist it first.
-        _store.Update(s => s.ClientId = clientId);
-
-        _loginCts?.Cancel();
-        _loginCts = new CancellationTokenSource(TimeSpan.FromMinutes(3));
-        ConnectButton.IsEnabled = false;
-        AuthStatus.Text = "Tarayıcıda girişi tamamlayın…";
+        using var login = new CancellationTokenSource(TimeSpan.FromMinutes(3));
+        _loginCts = login;
+        RefreshButton.IsEnabled = DisconnectButton.IsEnabled = false;
+        AuthStatus.Text = "Tarayıcıda onaylayın…";
         try
         {
-            await _session.SignInAsync(_openBrowser, _loginCts.Token);
-            UpdateAuthUi();
-            await LoadPlaylistsAsync();
-        }
-        catch (OperationCanceledException)
-        {
-            UpdateAuthUi("Giriş zaman aşımına uğradı.");
-        }
-        catch (Exception ex) when (ex is SpotifyAuthException or System.Net.HttpListenerException or HttpRequestException)
-        {
-            UpdateAuthUi(ex.Message);
+            var error = await AccountSetup.ConnectAsync(_session, _api, _openBrowser, login.Token);
+            // Queued, so it lands after the refresh that SignedInChanged queued.
+            await Dispatcher.InvokeAsync(() =>
+            {
+                UpdateAuthUi(error);
+                if (error is null)
+                {
+                    AuthStatus.Text = "İzinler yenilendi ✓";
+                }
+            }, DispatcherPriority.Background);
         }
         finally
         {
-            ConnectButton.IsEnabled = true;
+            _loginCts = null;
+            RefreshButton.IsEnabled = DisconnectButton.IsEnabled = true;
         }
+    }
+
+    private async void OnDisconnect(object sender, RoutedEventArgs e)
+    {
+        var answer = MessageBox.Show(this,
+            "Bu bilgisayardaki Spotify verileri silinecek: oturum ve ruh hallerine seçtiğiniz çalma listeleri "
+            + "(eski Spotiwidget klasöründeki kopyaları dahil). Geri alınamaz.\n\n"
+            + "Ruh halleriniz, görünüm, kısayollar ve Client ID kalır. Spotify'daki listelerinize dokunulmaz.\n\n"
+            + "Bağlantı kesilsin mi?",
+            "Bağlantıyı kes", MessageBoxButton.YesNo, MessageBoxImage.Warning, MessageBoxResult.No);
+        if (answer != MessageBoxResult.Yes)
+        {
+            return;
+        }
+
+        // Cleared first, or Kaydet would write the deleted mappings back.
+        _playlists = new();
+        foreach (var row in _moodRows)
+        {
+            row.Playlist.SelectedItem = null;
+            row.Playlist.ItemsSource = _playlists;
+        }
+
+        var clean = await _disconnect();
+        await Dispatcher.InvokeAsync(() => UpdateAuthUi(clean
+            ? null
+            : "Bağlantı kesildi ama bazı dosyalar temizlenemedi: %AppData% içindeki Tunelay ve Spotiwidget klasörlerini denetleyin."),
+            DispatcherPriority.Background);
     }
 
     private async void OnRefreshPlaylists(object sender, RoutedEventArgs e) => await LoadPlaylistsAsync();
@@ -524,6 +538,11 @@ public partial class SettingsWindow : Window
                 .Select(p => new PlaylistRef(p.Id, p.Name))
                 .OrderBy(p => p.Name, StringComparer.CurrentCultureIgnoreCase)
                 .ToList();
+            if (!_session.IsSignedIn)
+            {
+                return; // disconnected while loading
+            }
+
             _playlists = lists;
             foreach (var row in _moodRows)
             {
@@ -536,7 +555,7 @@ public partial class SettingsWindow : Window
         {
             UpdateAuthUi(ex.Message);
         }
-        catch (HttpRequestException)
+        catch (Exception ex) when (ex is HttpRequestException or TaskCanceledException or System.Text.Json.JsonException)
         {
             UpdateAuthUi("Spotify'a ulaşılamadı.");
         }
@@ -575,7 +594,6 @@ public partial class SettingsWindow : Window
 
         _store.Update(s =>
         {
-            s.ClientId = ClientIdBox.Text.Trim();
             s.Corner = CornerBox.SelectedValue is ScreenCorner c ? c : ScreenCorner.BottomRight;
             s.ShowMoodDock = ShowMoodDockBox.IsChecked == true;
             s.Animations = AnimationsBox.IsChecked == true;

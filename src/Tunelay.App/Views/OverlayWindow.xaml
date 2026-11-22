@@ -114,7 +114,7 @@
                         <Button x:Name="RepeatButton" Style="{StaticResource IconButton}" Content="{Binding RepeatGlyph}"
                                 Foreground="{Binding RepeatBrush}" ToolTip="{Binding RepeatTip}" Click="OnRepeat" />
                     </StackPanel>
-                    <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
+                    <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Opacity="{Binding AccountOpacity}">
                         <Button x:Name="LikeButton" Style="{StaticResource IconButton}" Content="{Binding LikeGlyph}"
                                 Foreground="{Binding LikeBrush}" ToolTip="Beğenilen Şarkılar'a ekle / çıkar" Click="OnLike" />
                         <Button x:Name="AddButton" Style="{StaticResource IconButton}" Content="&#xE710;"
@@ -124,6 +124,15 @@
 
                 <!-- Volume -->
                 <Grid Margin="8,6,4,0" ToolTip="Ses (kart üzerinde fare tekerleği de çalışır)">
+                    <Grid.Style>
+                        <Style TargetType="Grid">
+                            <Style.Triggers>
+                                <DataTrigger Binding="{Binding CanUseVolume}" Value="False">
+                                    <Setter Property="Visibility" Value="Collapsed" />
+                                </DataTrigger>
+                            </Style.Triggers>
+                        </Style>
+                    </Grid.Style>
                     <Grid.ColumnDefinitions>
                         <ColumnDefinition Width="Auto" />
                         <ColumnDefinition Width="*" />
@@ -150,7 +159,10 @@
                 </StackPanel>
 
                 <!-- Moods: only in a fullscreen app (the desktop dock is hidden there) or when the dock is off -->
-                <WrapPanel x:Name="MoodRow" Margin="0,8,0,0" Visibility="Collapsed" />
+                <!-- MoodRow's own opacity is animated, so the no-account dimming sits on the wrapper. -->
+                <Border Opacity="{Binding AccountOpacity}">
+                    <WrapPanel x:Name="MoodRow" Margin="0,8,0,0" Visibility="Collapsed" />
+                </Border>
             </StackPanel>
         </Border>
         <!-- Move mode: dashed frame; the whole card becomes a drag handle. -->

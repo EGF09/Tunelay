@@ -46,6 +46,13 @@ public sealed record Image(string Url, int? Width, int? Height);
 
 public sealed record SimplePlaylist(string Id, string Name);
 
+/// <param name="Items">Spotify returns it only to the playlist's owner and collaborators.</param>
+internal sealed record PlaylistAccess(UserRef? Owner, bool? Collaborative, ItemsInfo? Items);
+
+internal sealed record UserRef(string? Id);
+
+internal sealed record ItemsInfo(int? Total);
+
 internal sealed record Paging<T>(IReadOnlyList<T> Items, string? Next);
 
 internal sealed record DeviceList(IReadOnlyList<Device> Devices);

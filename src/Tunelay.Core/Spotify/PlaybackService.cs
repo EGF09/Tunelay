@@ -10,8 +10,10 @@ public enum PollMode
 }
 
 /// <summary>Polls playback state and runs player commands. Events fire on a thread-pool thread.</summary>
-public sealed class PlaybackService(ISpotifyApi api, Func<bool> isSignedIn) : IAsyncDisposable
+public sealed class PlaybackService(ISpotifyApi api, Func<bool> isSignedIn) : Playback.IPlaybackSource
 {
+    public Playback.SourceCapabilities Capabilities { get; } = new(Account: true, Volume: true);
+
     private static readonly TimeSpan VisibleInterval = TimeSpan.FromSeconds(3);
     private static readonly TimeSpan BackgroundInterval = TimeSpan.FromSeconds(15);
     private static readonly TimeSpan SettleDelay = TimeSpan.FromMilliseconds(350);
@@ -23,6 +25,7 @@ public sealed class PlaybackService(ISpotifyApi api, Func<bool> isSignedIn) : IA
     private PollMode _mode = PollMode.Visible;
 
     private string? _likedTrackId;
+    private readonly SemaphoreSlim _likeGate = new(1, 1);
 
     public PlaybackState? Current { get; private set; }
 
@@ -155,25 +158,49 @@ public sealed class PlaybackService(ISpotifyApi api, Func<bool> isSignedIn) : IA
             return;
         }
 
-        var liked = IsLiked == true;
-        if (liked)
+        // One at a time: a second click undoes the first instead of repeating it.
+        await _likeGate.WaitAsync().ConfigureAwait(false);
+        try
         {
-            await api.RemoveFromLibraryAsync(track).ConfigureAwait(false);
-        }
-        else
-        {
-            await api.SaveToLibraryAsync(track).ConfigureAwait(false);
-        }
+            // Never guess: saving a song that is already liked would make un-liking impossible.
+            var known = track.Id == _likedTrackId ? IsLiked : null;
+            var liked = known ?? await api.IsInLibraryAsync(track).ConfigureAwait(false);
 
-        SetLiked(track.Id, !liked);
-        Info?.Invoke(liked ? $"“{track.Name}” beğenilenlerden çıkarıldı" : $"♥ “{track.Name}” beğenilenlere eklendi");
+            SetLiked(track.Id, !liked); // shown at once, taken back if Spotify refuses
+            try
+            {
+                if (liked)
+                {
+                    await api.RemoveFromLibraryAsync(track).ConfigureAwait(false);
+                }
+                else
+                {
+                    await api.SaveToLibraryAsync(track).ConfigureAwait(false);
+                }
+            }
+            catch
+            {
+                SetLiked(track.Id, liked);
+                throw;
+            }
+
+            Info?.Invoke(liked ? $"“{track.Name}” beğenilenlerden çıkarıldı" : $"♥ “{track.Name}” beğenilenlere eklendi");
+        }
+        finally
+        {
+            _likeGate.Release();
+        }
     });
 
     private async Task CheckLikedAsync(Track track)
     {
         try
         {
-            SetLiked(track.Id, await api.IsInLibraryAsync(track).ConfigureAwait(false));
+            var liked = await api.IsInLibraryAsync(track).ConfigureAwait(false);
+            if (IsLiked is null) // otherwise a click was faster, and this answer is out of date
+            {
+                SetLiked(track.Id, liked);
+            }
         }
         catch (Exception ex) when (SpotifyFailure.IsExpected(ex))
         {
@@ -214,6 +241,14 @@ public sealed class PlaybackService(ISpotifyApi api, Func<bool> isSignedIn) : IA
             if (isSignedIn())
             {
                 await PollOnceAsync(ct).ConfigureAwait(false);
+            }
+
+            if (!isSignedIn())
+            {
+                // Signed out, possibly during that poll: keep nothing of the account.
+                Current = null;
+                IsLiked = null;
+                _likedTrackId = null;
             }
 
             try

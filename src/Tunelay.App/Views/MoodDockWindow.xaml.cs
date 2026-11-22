@@ -42,6 +42,9 @@ public partial class MoodDockWindow : Window
     public void SetMoods(IReadOnlyList<MoodDefinition> moods, string? activeId) =>
         MoodPills.Build(Moods, moods, activeId, id => MoodClicked?.Invoke(id), 13);
 
+    /// <summary>Without an account the moods are dimmed; pressing one says how to connect.</summary>
+    public void SetAccount(bool connected) => Moods.Opacity = connected ? 1 : 0.5;
+
     /// <summary>In move mode the dock is lifted above other windows so it can be found and dragged.</summary>
     public void SetMoveMode(bool on)
     {

@@ -330,6 +330,11 @@ public partial class OverlayWindow : Window
         var before = _lastLiked;
         _lastLiked = _vm.IsLiked;
         var glyph = GlyphOf(LikeButton);
+        if (_vm.IsLiked != true)
+        {
+            FxLayer.Children.Clear(); // no green dots over a heart that is no longer green
+        }
+
         if (before == false && _vm.IsLiked == true)
         {
             Anim.Pop(glyph);
@@ -474,13 +479,18 @@ public partial class OverlayWindow : Window
     private void Raise(CardCommand command)
     {
         RestartIdle();
-        Feedback(command);
+        if (command != CardCommand.AddToMood)
+        {
+            Feedback(command);
+        }
+
         Command?.Invoke(command);
     }
 
     /// <summary>
     /// The glyph animation for a command (click or hotkey). Play/pause, shuffle, repeat and like
-    /// animate from their state change instead, so they aren't played twice.
+    /// animate from their state change instead, so they aren't played twice. Adding animates
+    /// only once Spotify has accepted the song.
     /// </summary>
     public void Feedback(CardCommand command)
     {

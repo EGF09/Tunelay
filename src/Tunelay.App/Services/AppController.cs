@@ -10,6 +10,7 @@ using Tunelay.App.ViewModels;
 using Tunelay.App.Views;
 using Tunelay.Core;
 using Tunelay.Core.Moods;
+using Tunelay.Core.Playback;
 using Tunelay.Core.Settings;
 using Tunelay.Core.Spotify;
 using Tunelay.Native;
@@ -25,7 +26,10 @@ public sealed class AppController : IAsyncDisposable
     private readonly SpotifyClient _api;
     private readonly SpotifyStarter _starter;
     private MenuItem? _downloadItem;
-    private readonly PlaybackService _playback;
+    private readonly PlaybackRouter _playback;
+    private readonly WindowsMediaSource _local;
+    private readonly string _appData;
+    private WelcomeWindow? _welcome;
     private readonly MoodService _moods;
     private readonly OverlayViewModel _vm = new();
     private readonly OverlayWindow _card;
@@ -46,7 +50,8 @@ public sealed class AppController : IAsyncDisposable
     public AppController(Application app)
     {
         _app = app;
-        var dir = AppInfo.ResolveDataDirectory(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData));
+        _appData = Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData);
+        var dir = AppInfo.ResolveDataDirectory(_appData);
         _settings = new SettingsStore(Path.Combine(dir, "settings.json"));
 
         var tokenStore = new TokenStore(Path.Combine(dir, "tokens.bin"), new DpapiProtector());
@@ -56,9 +61,11 @@ public sealed class AppController : IAsyncDisposable
         {
             InnerHandler = new SocketsHttpHandler { PooledConnectionLifetime = TimeSpan.FromMinutes(5) },
         };
-        _starter = new SpotifyStarter(new SpotifyLauncher());
+        var launcher = new SpotifyLauncher();
+        _starter = new SpotifyStarter(launcher);
         _api = new SpotifyClient(new HttpClient(handler) { BaseAddress = SpotifyClient.BaseAddress, Timeout = TimeSpan.FromSeconds(15) }, _starter);
-        _playback = new PlaybackService(_api, () => _session.IsSignedIn);
+        _local = new WindowsMediaSource(launcher, () => !_session.IsSignedIn);
+        _playback = new PlaybackRouter(new PlaybackService(_api, () => _session.IsSignedIn), _local, () => _session.IsSignedIn);
         _moods = new MoodService(_api, _settings);
 
         _card = new OverlayWindow(_vm);
@@ -68,7 +75,7 @@ public sealed class AppController : IAsyncDisposable
     {
         _card.Show();
         _card.Command += OnCardCommand;
-        _card.MoodClicked += mood => _ = RunMoodAsync(() => _moods.SwitchAsync(mood));
+        _card.MoodClicked += SwitchMood;
         _card.VolumeWheel += delta => _ = _playback.ChangeVolumeAsync(delta);
         _card.VolumeSet += percent =>
         {
@@ -84,37 +91,34 @@ public sealed class AppController : IAsyncDisposable
             s.CardAnchorBottom = bottom;
         });
 
-        _dock.MoodClicked += mood => _ = RunMoodAsync(() => _moods.SwitchAsync(mood));
+        _dock.MoodClicked += SwitchMood;
         _dock.Moved += (left, top) => SavePosition(s =>
         {
             s.DockLeft = left;
             s.DockTop = top;
         });
 
-        _playback.StateChanged += state => Ui(() => _vm.ApplyPlayback(state, _session.IsSignedIn));
+        _playback.StateChanged += state => Ui(() => _vm.ApplyPlayback(state, _playback.Capabilities));
         _playback.LikedChanged += liked => Ui(() => _vm.IsLiked = liked);
         _playback.Error += message => Ui(() => ShowToast(message));
         _playback.Info += message => Ui(() => ShowToast(message));
         _session.SignedInChanged += signedIn => Ui(() =>
         {
-            _vm.ApplyPlayback(null, signedIn);
-            if (signedIn)
+            _dock.SetAccount(signedIn);
+            _playback.AccountChanged();
+            ApplyMoods();
+            if (!signedIn)
             {
-                _playback.RefreshSoon();
+                ShowToast("Hesap bağlı değil: girişsiz moddasınız. Bağlamak için Ayarlar → Spotify.");
             }
         });
+        _local.NotInstalled += () => Ui(ShowDownload);
         _moods.ActiveMoodChanged += _ => Ui(ApplyMoods);
 
         // "Opening" stays up for the whole wait; the result replaces it.
         _starter.Starting += () => Ui(() => _card.ShowToast("Spotify açılıyor…", TimeSpan.FromSeconds(22)));
         _starter.Ready += () => Ui(() => ShowToast("Spotify hazır, çalınıyor…"));
-        _starter.NotInstalled += () => Ui(() =>
-        {
-            if (_downloadItem is not null)
-            {
-                _downloadItem.Visibility = Visibility.Visible;
-            }
-        });
+        _starter.NotInstalled += () => Ui(ShowDownload);
 
         _foreground.Changed += OnForegroundChanged;
         _settings.Saved += _ => Ui(() =>
@@ -127,21 +131,101 @@ public sealed class AppController : IAsyncDisposable
 
         CreateTray();
         ApplySettings();
-        _vm.ApplyPlayback(null, _session.IsSignedIn);
+        _vm.ApplyPlayback(null, _playback.Capabilities);
+        _dock.SetAccount(_session.IsSignedIn);
         _foreground.Refresh();
         _playback.Start();
 
-        if (!_session.IsSignedIn || string.IsNullOrWhiteSpace(_settings.Current.ClientId))
+        if (AccountSetup.NeedsWelcome(_settings.Current, _session.IsSignedIn))
         {
-            OpenSettings();
+            OpenWelcome(connect: false);
         }
-        else if (!_session.HasScope("user-library-modify"))
+        else if (_session.IsSignedIn && !_session.HasScope("user-library-modify"))
         {
-            ShowToast("Beğenme (♡) için bir kez tekrar bağlanın: Ayarlar → Bağlantıyı kes → Spotify'a bağlan.");
+            ShowToast("Beğenme (♡) için izin gerekli: Ayarlar → Spotify → İzinleri yenile.");
         }
     }
 
     public void ShowToast(string message) => _card.ShowToast(message);
+
+    private void ShowDownload()
+    {
+        if (_downloadItem is not null)
+        {
+            _downloadItem.Visibility = Visibility.Visible;
+        }
+    }
+
+    /// <summary>
+    /// For what needs an account. A click on the desktop opens the wizard; a shortcut, or a click during
+    /// a game, only says how to connect, so no window lands over the game.
+    /// </summary>
+    private bool RequireAccount(bool clicked)
+    {
+        if (_session.IsSignedIn)
+        {
+            return true;
+        }
+
+        if (clicked && !_fullscreen)
+        {
+            OpenWelcome(connect: true);
+        }
+        else
+        {
+            ShowToast("Bunun için hesap gerekli: Ayarlar → Spotify → Hesap bağla.");
+        }
+
+        return false;
+    }
+
+    private void SwitchMood(string mood)
+    {
+        if (RequireAccount(clicked: true))
+        {
+            _ = RunMoodAsync(() => _moods.SwitchAsync(mood));
+        }
+    }
+
+    private void OpenWelcome(bool connect)
+    {
+        if (_welcome is not null)
+        {
+            if (connect)
+            {
+                _welcome.ShowWizard();
+            }
+
+            _welcome.Activate();
+            return;
+        }
+
+        var window = new WelcomeWindow(_settings, _session, _api, OpenBrowser, connect);
+        _welcome = window;
+        window.Closed += (_, _) =>
+        {
+            _welcome = null;
+            if (!_settings.Current.WelcomeSeen)
+            {
+                _settings.Update(s => s.WelcomeSeen = true);
+            }
+
+            if (window.Connected)
+            {
+                ShowToast("Spotify bağlandı ✓ Ruh hallerinize çalma listesi seçin.");
+                OpenSettings();
+            }
+        };
+        window.Show();
+        window.Activate();
+    }
+
+    private async Task<bool> DisconnectAsync()
+    {
+        var clean = await AccountSetup.DisconnectAsync(_session, _settings, _appData);
+        WindowsMediaSource.DeleteCachedArt();
+        return clean;
+    }
 
     private void ApplySettings()
     {
@@ -303,14 +387,25 @@ public sealed class AppController : IAsyncDisposable
                 _ = _playback.ChangeVolumeAsync(-10);
                 break;
             case HotkeyAction.Like:
-                _ = _playback.ToggleLikeAsync();
+                if (RequireAccount(clicked: false))
+                {
+                    _ = _playback.ToggleLikeAsync();
+                }
+
                 break;
             case HotkeyAction.SaveToMood:
-                _card.Feedback(CardCommand.AddToMood);
-                _ = RunMoodAsync(() => _moods.SaveTrackToActiveAsync(_playback.Current?.Item));
+                if (RequireAccount(clicked: false))
+                {
+                    _ = AddToMoodAsync();
+                }
+
                 break;
             case HotkeyAction.CycleMood:
-                _ = RunMoodAsync(() => _moods.CycleAsync());
+                if (RequireAccount(clicked: false))
+                {
+                    _ = RunMoodAsync(() => _moods.CycleAsync());
+                }
+
                 break;
             case HotkeyAction.Borderless:
                 ToggleBorderless();
@@ -404,7 +499,11 @@ public sealed class AppController : IAsyncDisposable
                 _ = _playback.NextAsync();
                 break;
             case CardCommand.Like:
-                _ = _playback.ToggleLikeAsync();
+                if (RequireAccount(clicked: true))
+                {
+                    _ = _playback.ToggleLikeAsync();
+                }
+
                 break;
             case CardCommand.Shuffle:
                 _ = _playback.ToggleShuffleAsync();
@@ -413,10 +512,25 @@ public sealed class AppController : IAsyncDisposable
                 _ = _playback.CycleRepeatAsync();
                 break;
             case CardCommand.AddToMood:
-                _ = RunMoodAsync(() => _moods.SaveTrackToActiveAsync(_playback.Current?.Item));
+                if (RequireAccount(clicked: true))
+                {
+                    _ = AddToMoodAsync();
+                }
+
                 break;
         }
     }
+
+    private Task AddToMoodAsync() => RunMoodAsync(async () =>
+    {
+        var result = await _moods.SaveTrackToActiveAsync(_playback.Current?.Item);
+        if (result.Ok)
+        {
+            Ui(() => _card.Feedback(CardCommand.AddToMood)); // the drop means "added"
+        }
+
+        return result;
+    });
 
     private async Task RunMoodAsync(Func<Task<MoodResult>> action)
     {
@@ -497,7 +611,8 @@ public sealed class AppController : IAsyncDisposable
 
         // The widget keeps working while settings are open. Shortcuts pause only while one is being
         // recorded, because Windows never delivers a registered combo to the recording box.
-        var window = new SettingsWindow(_settings, _session, _api, OpenBrowser, OnSettingsPreview);
+        var window = new SettingsWindow(_settings, _session, _api, OpenBrowser,
+            () => OpenWelcome(connect: true), DisconnectAsync, OnSettingsPreview);
         _settingsWindow = window;
         window.RecordingHotkeyChanged += recording =>
         {

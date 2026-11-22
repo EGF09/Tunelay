@@ -188,7 +188,7 @@ public class SpotifyApiHandlerTests
 
         var ex = await Assert.ThrowsAsync<SpotifyApiException>(() => new SpotifyClient(http).SaveToLibraryAsync(Song));
 
-        Assert.Contains("tekrar bağlanın", ex.Message);
+        Assert.Contains("İzinleri yenile", ex.Message);
     }
 
     [Theory]

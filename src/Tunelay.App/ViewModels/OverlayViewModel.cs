@@ -1,5 +1,6 @@
 using System.Windows.Media;
 using CommunityToolkit.Mvvm.ComponentModel;
+using Tunelay.Core.Playback;
 using Tunelay.Core.Settings;
 using Tunelay.Core.Spotify;
 
@@ -8,10 +9,10 @@ namespace Tunelay.App.ViewModels;
 public sealed partial class OverlayViewModel : ObservableObject
 {
     [ObservableProperty]
-    private string _title = "Spotify'a bağlı değil";
+    private string _title = "Şu an bir şey çalmıyor";
 
     [ObservableProperty]
-    private string _artist = "Tepsi simgesi → Ayarlar";
+    private string _artist = "";
 
     [ObservableProperty]
     private string? _imageUrl;
@@ -107,24 +108,24 @@ public sealed partial class OverlayViewModel : ObservableObject
 
     partial void OnVolumeChanged(int? value) => OnPropertyChanged(nameof(VolumeText));
 
-    public void ApplyPlayback(PlaybackState? state, bool signedIn)
+    /// <summary>The volume row shows only when the active source can change the volume.</summary>
+    [ObservableProperty]
+    private bool _canUseVolume = true;
+
+    /// <summary>Like, add and moods are dimmed without an account, but stay clickable to say how to connect.</summary>
+    [ObservableProperty]
+    private double _accountOpacity = 1;
+
+    public void ApplyPlayback(PlaybackState? state, SourceCapabilities capabilities)
     {
-        if (!signedIn)
-        {
-            TrackId = null;
-            Title = "Spotify'a bağlı değil";
-            Artist = "Tepsi simgesi → Ayarlar";
-            ImageUrl = null;
-            IsPlaying = false;
-            Volume = null;
-            return;
-        }
+        CanUseVolume = capabilities.Volume;
+        AccountOpacity = capabilities.Account ? 1 : 0.4;
 
         if (state?.Item is not { } track)
         {
             TrackId = null;
             Title = "Şu an bir şey çalmıyor";
-            Artist = "Bir mod seçin veya Spotify'ı açın";
+            Artist = capabilities.Account ? "Bir ruh hali seçin veya Oynat'a basın" : "Oynat'a basınca Spotify açılır";
             ImageUrl = null;
             IsPlaying = false;
             IsShuffle = state?.ShuffleState == true;

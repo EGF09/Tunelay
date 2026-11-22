@@ -129,6 +129,8 @@ public class MoodServiceTests
 
         public Task AddToPlaylistAsync(string playlistId, string trackUri, CancellationToken ct = default) => Log($"add {playlistId} {trackUri}");
 
+        public Task<bool> CanEditPlaylistAsync(string playlistId, CancellationToken ct = default) => Task.FromResult(true);
+
         public Task<bool> IsInLibraryAsync(Track track, CancellationToken ct = default) => Task.FromResult(false);
 
         public Task SaveToLibraryAsync(Track track, CancellationToken ct = default) => Log($"like {track.Id}");
