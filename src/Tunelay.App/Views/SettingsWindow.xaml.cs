@@ -305,10 +305,15 @@ public partial class SettingsWindow : Window
 
             box.GotKeyboardFocus += (_, _) =>
             {
+                SetRecording(box);
                 box.Text = PressKeyText;
                 box.Foreground = (Brush)FindResource("AccentBrush");
             };
-            box.LostKeyboardFocus += (_, _) => ShowHotkey(action, box);
+            box.LostKeyboardFocus += (_, _) =>
+            {
+                ShowHotkey(action, box);
+                SetRecording(null);
+            };
             box.PreviewKeyDown += (_, e) =>
             {
                 var key = e.Key == Key.System ? e.SystemKey : e.Key;
@@ -321,7 +326,7 @@ public partial class SettingsWindow : Window
                 switch (key)
                 {
                     case Key.Escape:
-                        Keyboard.ClearFocus();
+                        StopRecording();
                         return;
                     case Key.Back or Key.Delete:
                         _hotkeyValues[action] = "";
@@ -336,7 +341,7 @@ public partial class SettingsWindow : Window
                         break;
                 }
 
-                Keyboard.ClearFocus();
+                StopRecording();
                 ValidateHotkeys();
             };
 
@@ -347,6 +352,48 @@ public partial class SettingsWindow : Window
             HotkeyGrid.Children.Add(box);
             _hotkeyBoxes[action] = box;
             row++;
+        }
+    }
+
+    /// <summary>True while a shortcut box waits for keys, so the app can release its global shortcuts.</summary>
+    public event Action<bool>? RecordingHotkeyChanged;
+
+    private TextBox? _recordingBox;
+
+    private void SetRecording(TextBox? box)
+    {
+        var was = _recordingBox is not null;
+        _recordingBox = box;
+        if (was != (box is not null))
+        {
+            RecordingHotkeyChanged?.Invoke(box is not null);
+        }
+    }
+
+    private void StopRecording()
+    {
+        // Clear the remembered focus too, or coming back to the window would start recording again.
+        FocusManager.SetFocusedElement(this, null);
+        Keyboard.ClearFocus();
+        SetRecording(null);
+    }
+
+    protected override void OnDeactivated(EventArgs e)
+    {
+        base.OnDeactivated(e);
+        if (_recordingBox is not null)
+        {
+            StopRecording();
+        }
+    }
+
+    protected override void OnPreviewMouseDown(MouseButtonEventArgs e)
+    {
+        base.OnPreviewMouseDown(e);
+        // A click anywhere else ends recording; empty areas don't take focus by themselves.
+        if (_recordingBox is { IsMouseOver: false })
+        {
+            StopRecording();
         }
     }
 

@@ -140,10 +140,6 @@ public sealed class AppController : IAsyncDisposable
         ApplyMoods();
         UpdateDock();
         RegisterHotkeys(s);
-        if (_moveMode)
-        {
-            SetMoveMode(true); // re-grab Esc after re-registering
-        }
     }
 
     /// <summary>
@@ -209,7 +205,7 @@ public sealed class AppController : IAsyncDisposable
         ReleaseEsc();
         if (on)
         {
-            _escId = _hotkeys.RegisterKey(Key.Escape, () => SetMoveMode(false));
+            GrabEsc();
             if (!was)
             {
                 ShowToast("Taşıma modu: kartı ve paneli sürükleyin. Bitirmek için Esc veya Ctrl+Alt+D.");
@@ -241,8 +237,7 @@ public sealed class AppController : IAsyncDisposable
 
     private void RegisterHotkeys(AppSettings s)
     {
-        _hotkeys.UnregisterAll();
-        _escId = 0;
+        SuspendHotkeys();
         var failed = new List<string>();
         foreach (var (action, combo) in s.Hotkeys)
         {
@@ -255,6 +250,12 @@ public sealed class AppController : IAsyncDisposable
             {
                 failed.Add(combo);
             }
+        }
+
+        // Re-registering drops Esc, so take it again while something is open that Esc closes.
+        if (_moveMode || _card.IsUnlocked)
+        {
+            GrabEsc();
         }
 
         if (failed.Count > 0)
@@ -339,8 +340,31 @@ public sealed class AppController : IAsyncDisposable
         {
             _playback.RefreshSoon();
             // Esc locks the card again; it is only grabbed while the card is unlocked.
-            _escId = _hotkeys.RegisterKey(Key.Escape, () => _card.Lock());
+            GrabEsc();
         }
+    }
+
+    /// <summary>Esc ends move mode, or locks the unlocked card.</summary>
+    private void GrabEsc()
+    {
+        ReleaseEsc();
+        _escId = _hotkeys.RegisterKey(Key.Escape, () =>
+        {
+            if (_moveMode)
+            {
+                SetMoveMode(false);
+            }
+            else
+            {
+                _card.Lock();
+            }
+        });
+    }
+
+    private void SuspendHotkeys()
+    {
+        _hotkeys.UnregisterAll();
+        _escId = 0;
     }
 
     private void ReleaseEsc()
@@ -454,18 +478,21 @@ public sealed class AppController : IAsyncDisposable
             return;
         }
 
-        // Free the global shortcuts so the settings window can capture new combos.
-        _hotkeys.UnregisterAll();
-        _escId = 0;
-        if (_moveMode)
-        {
-            SetMoveMode(false);
-        }
-
-        _card.Lock();
-
+        // The widget keeps working while settings are open. Shortcuts pause only while one is being
+        // recorded, because Windows never delivers a registered combo to the recording box.
         var window = new SettingsWindow(_settings, _session, _api, OpenBrowser, OnSettingsPreview);
         _settingsWindow = window;
+        window.RecordingHotkeyChanged += recording =>
+        {
+            if (recording)
+            {
+                SuspendHotkeys();
+            }
+            else
+            {
+                RegisterHotkeys(_settings.Current);
+            }
+        };
         window.Closed += (_, _) =>
         {
             _settingsWindow = null;
